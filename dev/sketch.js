@@ -1,39 +1,88 @@
 
-let gameStarted = false;
+let gameState = "startup";
 let forestBackground;
 
-// Load the forest background before the game starts
+// Load background
 function preload() {
-  forestBackground = loadImage("assets/corrupted-forest-background.png");
+  forestBackground = loadImage(
+    "assets/corrupted-forest-background.png"
+  );
 }
 
-// Create the game window
+// Create canvas and load saved profiles
 function setup() {
   createCanvas(1000, 650);
+  loadProfiles();
 }
 
-// Runs continuously
+// Main game loop
 function draw() {
-  if (!gameStarted) {
+  if (gameState === "startup") {
 
-    // Draw the startup screen and its animations
     drawStartupScreen();
 
-  } else {
+  } else if (gameState === "profileSelection") {
 
-    // Temporary screen after pressing Enter
-    background(50, 150, 100);
+    drawProfileSelection();
 
-    fill("white");
+  } else if (gameState === "classSelection") {
+
+    // Temporary placeholder for our next screen
+    cursor(ARROW);
+    background(25, 20, 35);
+
+    fill(245, 215, 165);
     textAlign(CENTER, CENTER);
-    textSize(40);
-    text("GAME STARTED!", width / 2, height / 2);
+    textSize(36);
+    text("CLASS SELECTION", width / 2, height / 2);
+
+    textSize(18);
+    text("Coming next!", width / 2, height / 2 + 55);
   }
 }
 
-// Start the game when Enter is pressed
+// ENTER remains a hidden shortcut
 function keyPressed() {
-  if (keyCode === ENTER) {
-    gameStarted = true;
+
+  // Handle typing controls in the profile creation window
+  if (gameState === "profileSelection" && creatingProfile) {
+    return handleCreateProfileKey();
+  }
+
+  // ENTER remains a hidden shortcut on startup
+  if (gameState === "startup" && keyCode === ENTER) {
+    gameState = "profileSelection";
+    return false;
+  }
+
+  // ESC returns from class selection
+  else if (
+    gameState === "classSelection" &&
+    keyCode === ESCAPE
+  ) {
+    gameState = "profileSelection";
+  }
+}
+
+// Handle mouse interactions
+function mousePressed() {
+  if (gameState === "startup") {
+
+    if (isMouseOverPlay()) {
+      gameState = "profileSelection";
+    }
+
+  } else if (gameState === "profileSelection") {
+
+    handleProfileClick();
+  }
+}
+
+
+// Capture typed characters for profile names
+function keyTyped() {
+  if (gameState === "profileSelection" && creatingProfile) {
+    handleCreateProfileTyped();
+    return false;
   }
 }
