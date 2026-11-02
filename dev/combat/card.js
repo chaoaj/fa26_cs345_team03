@@ -5,13 +5,14 @@ const MAX_SANITY = 100;
 const FLASH_FRAMES = 18; // about 0.3 seconds at 60 fps
 
 class Card {
-  constructor(name, x, y, baseColor) {
+  constructor(name, x, y, baseColor, w = 150, h = 200) {
     this.name = name;
     this.x = x; // center of the card
     this.y = y;
-    this.w = 150;
-    this.h = 200;
+    this.w = w;
+    this.h = h;
     this.baseColor = baseColor;
+    this.showBar = true;
 
     this.sanity = MAX_SANITY;
     this.displaySanity = MAX_SANITY; // bar slides toward sanity
@@ -28,6 +29,11 @@ class Card {
   heal(amount) {
     this.sanity = Math.min(MAX_SANITY, this.sanity + amount);
     this.healTimer = FLASH_FRAMES;
+  }
+
+  contains (mx, my) {
+    return mx >= this.x - this.w / 2 && mx <= this.x + this.w / 2 &&
+    my >= this.y - this.h / 2 && my <= this.y + this.h / 2;
   }
 
   update() {
@@ -60,7 +66,10 @@ class Card {
     text(this.name, this.x, this.y);
     pop();
 
-    this.drawSanityBar();
+    if (this.showBar) {
+      this.drawSanityBar()
+    }
+    
   }
 
   drawSanityBar() {
