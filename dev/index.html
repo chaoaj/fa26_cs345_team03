@@ -1,20 +1,35 @@
+
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
-    <title>Sketch</title>
+  <title>Whimsy & Woe</title>
 
-    <link rel="stylesheet" type="text/css" href="style.css">
+  <link rel="stylesheet" href="style.css">
 
-    <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
-  </head>
+  <script src="libraries/p5.min.js"></script>
+  <script src="libraries/p5.sound.min.js"></script>
+</head>
 
-  <body>
-    <script src="startup.js"></script>
-    <script src="profiles.js"></script>
-    <script src="sketch.js"></script>
-  </body>
+<body>
+  <!-- Bear class -->
+  <script src="classes/bear/bearAbilities.js"></script>
+  <script src="classes/bear/bear.js"></script>
+
+  <!-- Deck Builder -->
+  <script src="deckBuilder/energyCards.js"></script>
+  <script src="deckBuilder/deckBuilder.js"></script>
+  <script src="deckBuilder/deckBuilderScreen.js"></script>
+
+  <!-- Game screens -->
+  <script src="startup.js"></script>
+  <script src="profiles.js"></script>
+  <script src="mainMenu.js"></script>
+
+  <!-- Main controller: load last -->
+  <script src="sketch.js"></script>
+</body>
 </html>
