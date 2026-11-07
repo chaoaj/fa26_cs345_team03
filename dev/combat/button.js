@@ -20,18 +20,20 @@ class Button {
   draw(enabled) {
     push();
     let bg;
-    if (!enabled) bg = color(90);
-    else if (this.action === "attack") bg = color(200, 60, 55);
-    else bg = color(50, 165, 90);
+    if (!enabled) bg = color(70, 55, 80);                  // dull purple-gray
+    else if (this.action === "attack") bg = color(205, 85, 50); // ember orange
+    else if (this.action === "heal") bg = color(90, 150, 70);   // moss green
+    else bg = color(175, 120, 50);                              // other buttons (Restart): wood gold
 
-    stroke(20);
+    stroke(INK);
     strokeWeight(2);
     fill(bg);
     rect(this.x, this.y, this.w, this.h, 8);
 
     noStroke();
-    fill(enabled ? 255 : 170);
+    fill(enabled ? color(CREAM) : color(150, 135, 160));
     textAlign(CENTER, CENTER);
+    textStyle(BOLD);
     textSize(15);
     text(this.label, this.x + this.w / 2, this.y + this.h / 2);
     pop();

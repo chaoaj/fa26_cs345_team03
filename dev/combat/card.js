@@ -11,8 +11,16 @@ class Card {
     this.y = y;
     this.w = w;
     this.h = h;
+
+    // Where the card is heading. update() slides it there smoothly.
+    this.targetX = x;
+    this.targetY = y;
+    this.targetW = w;
+    this.targetH = h;
+
     this.baseColor = baseColor;
     this.showBar = true;
+    this.isShadow = false; // true for shadow creatures (the enemy): dark body, glowing edge and eyes
 
     this.sanity = MAX_SANITY;
     this.displaySanity = MAX_SANITY; // bar slides toward sanity
@@ -37,6 +45,12 @@ class Card {
   }
 
   update() {
+    // Glide 20% of the way toward the target each frame
+    this.x = lerp(this.x, this.targetX, 0.2);
+    this.y = lerp(this.y, this.targetY, 0.2);
+    this.w = lerp(this.w, this.targetW, 0.2);
+    this.h = lerp(this.h, this.targetH, 0.2);
+
     this.displaySanity = lerp(this.displaySanity, this.sanity, 0.12);
     if (this.hitTimer > 0) this.hitTimer--;
     if (this.healTimer > 0) this.healTimer--;
@@ -54,22 +68,68 @@ class Card {
       bodyColor = lerpColor(this.baseColor, color(70, 210, 110), this.healTimer / FLASH_FRAMES);
     }
 
-    stroke(30);
-    strokeWeight(3);
-    fill(bodyColor);
-    rect(this.x, this.y, this.w, this.h, 12);
-
-    noStroke();
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(18);
-    text(this.name, this.x, this.y);
+    if (this.isShadow) {
+      this.drawShadowBody(bodyColor);
+    } else {
+      this.drawForestBody(bodyColor);
+    }
     pop();
 
     if (this.showBar) {
       this.drawSanityBar()
     }
     
+  }
+
+  // Your cards: warm wood with a cream inner border and dark cartoon outline
+  drawForestBody(bodyColor) {
+    stroke(INK);
+    strokeWeight(3);
+    fill(bodyColor);
+    rect(this.x, this.y, this.w, this.h, 12);
+
+    noFill();
+    stroke(CREAM[0], CREAM[1], CREAM[2], 110);
+    strokeWeight(1.5);
+    rect(this.x, this.y, this.w - 12, this.h - 12, 8);
+
+    noStroke();
+    fill(CREAM);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(min(18, this.w * 0.17)); // smaller text on smaller cards
+    text(this.name, this.x, this.y);
+  }
+
+  // Shadow creatures: dark purple, glowing pink edge, angry glowing eyes
+  drawShadowBody(bodyColor) {
+    drawingContext.shadowBlur = 25;
+    drawingContext.shadowColor = "rgba(255, 70, 210, 0.7)";
+    stroke(200, 60, 190);
+    strokeWeight(3);
+    fill(bodyColor);
+    rect(this.x, this.y, this.w, this.h, 12);
+
+    // Eyes
+    drawingContext.shadowBlur = 15;
+    drawingContext.shadowColor = "rgba(255, 70, 210, 1)";
+    noStroke();
+    fill(GLOW_PINK);
+    const eyeY = this.y - this.h * 0.12;
+    for (const side of [-1, 1]) {
+      push();
+      translate(this.x + side * this.w * 0.17, eyeY);
+      rotate(side * 0.35);
+      ellipse(0, 0, this.w * 0.2, this.w * 0.09);
+      pop();
+    }
+    drawingContext.shadowBlur = 0;
+
+    fill(235, 190, 235);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(min(18, this.w * 0.15));
+    text(this.name, this.x, this.y + this.h * 0.22);
   }
 
   drawSanityBar() {
@@ -80,17 +140,23 @@ class Card {
     const pct = constrain(this.displaySanity / MAX_SANITY, 0, 1);
 
     push();
-    stroke(20);
+    stroke(INK);
     strokeWeight(2);
-    fill(60);
+    fill(45, 25, 55);
     rect(left, top, barW, barH, 4);
 
+    // Fill fades green (sane) -> gold (shaken) -> purple (losing it) as sanity drops
     noStroke();
-    fill(60, 200, 90);
+    const green = color(150, 210, 90);
+    const gold = color(235, 180, 70);
+    const purple = color(180, 70, 210);
+    fill(pct > 0.5 ? lerpColor(gold, green, (pct - 0.5) * 2) : lerpColor(purple, gold, pct * 2));
     rect(left, top, barW * pct, barH, 4);
 
     // "Sanity" label above the bar
-    fill(240);
+    fill(CREAM);
+    stroke(INK);
+    strokeWeight(3);
     textAlign(CENTER, BOTTOM);
     textSize(14);
     text("Sanity", this.x, top - 4);

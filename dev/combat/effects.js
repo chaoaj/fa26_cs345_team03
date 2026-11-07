@@ -32,16 +32,22 @@ class AttackProjectile {
   }
 
   draw() {
+    // Your attacks are golden firefly light; the enemy's are pink shadow magic
+    const fromEnemy = this.from.side === "enemy";
+    const trailC = fromEnemy ? [220, 60, 200] : [255, 170, 60];
+    const outerC = fromEnemy ? [200, 40, 190] : [255, 150, 40];
+    const coreC = fromEnemy ? [255, 170, 245] : [255, 230, 140];
+
     push();
     noStroke();
     for (let i = 0; i < this.trail.length; i++) {
-      fill(255, 120, 40, map(i, 0, this.trail.length, 20, 160));
+      fill(trailC[0], trailC[1], trailC[2], map(i, 0, this.trail.length, 20, 160));
       circle(this.trail[i].x, this.trail[i].y, 6 + i * 1.5);
     }
     const p = this.currentPos();
-    fill(255, 90, 30, 90);
+    fill(outerC[0], outerC[1], outerC[2], 90);
     circle(p.x, p.y, 40);
-    fill(255, 200, 80);
+    fill(coreC);
     circle(p.x, p.y, 20);
     pop();
   }
