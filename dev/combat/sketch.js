@@ -3,6 +3,8 @@
 
 const ATTACK_DAMAGE = 15;
 const HEAL_AMOUNT = 10;
+const ENEMY_HEAL_THRESHOLD = 0.3;
+const ENEMY_HEAL_CHANCE = 0.5;
 const MAX_BOARD = 4; // most cards you can have in the arena at once
 
 // Canvas size: same on every screen of the game
@@ -20,6 +22,7 @@ const SANITY_BAR_Y = 510; // your big shared sanity bar, under the arena
 const HAND_Y = 590;
 
 let enemy;
+let enemyAI;
 let board = [];           // your cards in the arena
 let hand = [];            // your cards in hand
 let buttons = [];         // the two shared buttons: Attack and Heal
@@ -74,6 +77,10 @@ function startBattle() {
   enemy = new Card("Enemy", width / 2, ENEMY_Y, color(38, 18, 52), BOARD_W, BOARD_H);
   enemy.side = "enemy";
   enemy.isShadow = true; // dark body with glowing eyes
+  enemyAI = new EnemyAI({
+    healThreshold: ENEMY_HEAL_THRESHOLD,
+    healChance: ENEMY_HEAL_CHANCE,
+  });
 
   playerSanity = new PlayerSanity(width / 2, SANITY_BAR_Y, 480, 26);
 
@@ -249,8 +256,7 @@ function performAction(actor, action) {
   }
 }
 
-// Runs after every action. On your turn, the next card in the arena (left to right) acts.
-// After your last card acts, it's the enemy's turn. Then back to your first card.
+// The boss responds after each player action, then the next player card acts.
 function endTurn() {
   if (enemy.sanity <= 0) {
     gameOverMessage = "Enemy went insane! You win.";
@@ -258,16 +264,21 @@ function endTurn() {
     gameOverMessage = "You lost your mind... Returning to checkpoint.";
   }
 
-  if (currentTurn === "player") {
-    activeIndex++;
-    if (activeIndex >= board.length) {
-      currentTurn = "enemy";
-      activeIndex = 0;
-    }
-  } else {
-    currentTurn = "player";
-    activeIndex = 0;
+  if (gameOverMessage) {
+    busy = false;
+    return;
   }
+
+  if (currentTurn === "player") {
+    activeIndex = board.length > 0 ? (activeIndex + 1) % board.length : 0;
+    currentTurn = "enemy";
+    performAction(enemy, enemyAI.chooseAction(enemy.sanity, MAX_SANITY));
+    return;
+  }
+
+  currentTurn = "player";
+  if (board.length === 0) activeIndex = 0;
+  else activeIndex %= board.length;
   busy = false;
 }
 
