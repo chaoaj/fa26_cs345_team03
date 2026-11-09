@@ -75,26 +75,8 @@ function draw() {
 
   } else if (gameState === "classSelection") {
 
-    cursor(ARROW);
-    background(25, 20, 35);
-
-    fill(245, 215, 165);
-    textAlign(CENTER, CENTER);
-    textSize(36);
-
-    text(
-      "CLASS SELECTION",
-      width / 2,
-      height / 2
-    );
-
-    textSize(18);
-
-    text(
-      "Coming next! (ESC to return)",
-      width / 2,
-      height / 2 + 55
-    );
+    csDraw();
+    
   }
 }
 
@@ -166,7 +148,13 @@ function mousePressed() {
   } else if (gameState === "deckBuilder") {
 
     return dbMousePressed();
+
+  //Class Selection
+  } else if (gameState === "classSelection") {
+    
+    return csMousePressed();
   }
+
 
   return false;
 }
