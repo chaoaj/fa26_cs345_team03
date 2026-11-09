@@ -256,7 +256,8 @@ function performAction(actor, action) {
   }
 }
 
-// The boss responds after each player action, then the next player card acts.
+// Runs after every action: one of your cards acts (left to right, wrapping around),
+// then the enemy, then your next card.
 function endTurn() {
   if (enemy.sanity <= 0) {
     gameOverMessage = "Enemy went insane! You win.";
@@ -441,8 +442,6 @@ function returnToHand(card) {
   if (index < activeIndex) activeIndex--;
   if (activeIndex >= board.length) {
     activeIndex = 0;
-    // If every card left in the arena already acted, it's the enemy's turn
-    if (board.length > 0) currentTurn = "enemy";
   }
 
   hand.push(card); // targets (size and spot) are set by layoutHand()
