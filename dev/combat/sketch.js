@@ -4,7 +4,6 @@
 const ATTACK_DAMAGE = 15;
 const HEAL_AMOUNT = 10;
 const ENEMY_HEAL_THRESHOLD = 0.3;
-const ENEMY_HEAL_CHANCE = 0.5;
 const MAX_BOARD = 4; // most cards you can have in the arena at once
 
 // Canvas size: same on every screen of the game
@@ -77,10 +76,7 @@ function startBattle() {
   enemy = new Card("Enemy", width / 2, ENEMY_Y, color(38, 18, 52), BOARD_W, BOARD_H);
   enemy.side = "enemy";
   enemy.isShadow = true; // dark body with glowing eyes
-  enemyAI = new EnemyAI({
-    healThreshold: ENEMY_HEAL_THRESHOLD,
-    healChance: ENEMY_HEAL_CHANCE,
-  });
+  enemyAI = new EnemyAI({ healThreshold: ENEMY_HEAL_THRESHOLD });
 
   playerSanity = new PlayerSanity(width / 2, SANITY_BAR_Y, 480, 26);
 

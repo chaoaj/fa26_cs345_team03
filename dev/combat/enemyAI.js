@@ -1,11 +1,13 @@
 class EnemyAI {
-	constructor({ healThreshold, healChance }) {
+	// The project supplies the health fraction below which the boss may heal.
+	constructor({ healThreshold }) {
 		this.healThreshold = healThreshold;
-		this.healChance = healChance;
 	}
 
 	chooseAction(currentHealth, maxHealth) {
+		// Always attack above the threshold; below it, randomize the heal chance each turn.
 		if (currentHealth / maxHealth >= this.healThreshold) return "attack";
-		return Math.random() < this.healChance ? "heal" : "attack";
+		const healChance = Math.random();
+		return Math.random() < healChance ? "heal" : "attack";
 	}
 }
