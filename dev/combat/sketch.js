@@ -249,8 +249,8 @@ function performAction(actor, action) {
   }
 }
 
-// Runs after every action. On your turn, the next card in the arena (left to right) acts.
-// After your last card acts, it's the enemy's turn. Then back to your first card.
+// Runs after every action: one of your cards acts (left to right, wrapping around),
+// then the enemy, then your next card.
 function endTurn() {
   if (enemy.sanity <= 0) {
     gameOverMessage = "Enemy went insane! You win.";
@@ -259,14 +259,10 @@ function endTurn() {
   }
 
   if (currentTurn === "player") {
-    activeIndex++;
-    if (activeIndex >= board.length) {
-      currentTurn = "enemy";
-      activeIndex = 0;
-    }
+    activeIndex = (activeIndex + 1) % board.length;
+    currentTurn = "enemy";
   } else {
     currentTurn = "player";
-    activeIndex = 0;
   }
   busy = false;
 }
@@ -430,8 +426,6 @@ function returnToHand(card) {
   if (index < activeIndex) activeIndex--;
   if (activeIndex >= board.length) {
     activeIndex = 0;
-    // If every card left in the arena already acted, it's the enemy's turn
-    if (board.length > 0) currentTurn = "enemy";
   }
 
   hand.push(card); // targets (size and spot) are set by layoutHand()
