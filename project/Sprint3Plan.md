@@ -17,11 +17,11 @@
 
 **Sprint Goal:**
 
-Build core features of Whimsy & Woe: a loading screen between screens, a first boss, a working energy system, and an updated class selection screen.
+Build core features of Whimsy & Woe: a loading screen between screens, a first boss with its own deck, a working energy system, improved combat with card piles, and an updated class selection screen.
 
 ### 1.1 Value to Stakeholders
 
-Players get a smoother game with loading screens between screens, a first boss to fight, and a clearer class selection screen. The development team gets the boss and the energy system built, which gives future sprints a good base to add more cards, classes, and bosses. The product owner sees real progress on the core gameplay at the demo, which shows the project is on track.
+Players get a smoother game with loading screens between screens, a first boss to fight, combat that feels like a real card game, and a clearer class selection screen. The development team gets the boss, the energy system, and the improved combat built, which gives future sprints a good base to add more cards, classes, and bosses. The product owner sees real progress on the core gameplay at the demo, which shows the project is on track.
 
 ### 2. GitHub Projects Setup Checklist
 
@@ -43,7 +43,9 @@ Players get a smoother game with loading screens between screens, a first boss t
 | 3 | As a player, I want energy cards in my deck so that I have a resource to power my combat cards. | 5 | #17 |
 | 4 | As a player, I want to track and spend my energy during battle so that I have to plan which actions to take. | 3 | #18 |
 | 5 | As a player, I want a class selection screen that follows our design so that choosing a class is clear and fits the game. | 3 | #19 |
-| | **Total story points** | **19** | |
+| 6 | As a player, I want to play cards into the arena and attack the enemy by dragging from them, with used cards going to a discard pile and new cards drawn from my deck, so that combat feels like a real card game. | 5 | #20 |
+| 7 | As a player, I want the boss to fight with its own full deck of cards so that boss battles feel unique and challenging. | 5 | #21 |
+| | **Total story points** | **29** | |
 
 ## 4. Work Distribution
 
@@ -51,10 +53,10 @@ Players get a smoother game with loading screens between screens, a first boss t
 | Team member | Tasks assigned (count) | Total hours |
 | --- | --- | --- |
 | Jacob | 3 | 3 hrs |
-| Julian | 4 | 4.5 hrs |
-| Michael | 4 | 5.5 hrs |
-| Rene | 4 | 4.5 hrs |
-| Sammy | 5 | 5 hrs |
-| **Team total** | **20** | **22.5 hrs** |
+| Julian | 5 | 5 hrs |
+| Michael | 6 | 8 hrs |
+| Rene | 6 | 6 hrs |
+| Sammy | 6 | 5.5 hrs |
+| **Team total** | **26** | **27.5 hrs** |
 
 **Is the work split fairly?** Yes.
