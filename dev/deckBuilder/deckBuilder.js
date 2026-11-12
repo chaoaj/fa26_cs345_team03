@@ -1,22 +1,70 @@
-/** Whimsy & Woe - Deck Builder Logic */
+
+/**
+ * WHIMSY & WOE
+ * Deck Builder Logic
+ *
+ * Handles:
+ * - Deck creation
+ * - Combat and Energy card limits
+ * - Achievement requirements
+ * - Deck validation
+ * - Starter Bear deck
+ * - Saved decks
+ * - Equipped decks
+ */
+
+// =====================================================
+// DECK BUILDER RULES
+// =====================================================
 
 const DECK_BUILDER_RULES = {
   minCards: 40,
   maxCards: 40,
+
   minCombatCards: 10,
   minEnergyCards: 10,
+
   maxCombatCards: 30,
   maxEnergyCards: 30,
+
   minUniqueCombatCards: 4,
   maxSavedDecks: 10
 };
 
-const DB_STORAGE_KEY = "ww_bear_test_decks_v2";
-const DB_EQUIPPED_DECK_KEY = "ww_bear_equipped_deck_v1";
+// =====================================================
+// PROFILE-SPECIFIC DECK STORAGE
+// =====================================================
 
-function createEmptyDeck(classId = "bear", name = "New Deck") {
+function getDeckStorageKey() {
+  if (!selectedProfile || !selectedProfile.id) {
+    throw new Error("No player profile selected.");
+  }
+
+  return `ww_decks_profile_${selectedProfile.id}`;
+}
+
+function getEquippedDeckStorageKey() {
+  if (!selectedProfile || !selectedProfile.id) {
+    throw new Error("No player profile selected.");
+  }
+
+  return `ww_equipped_deck_profile_${selectedProfile.id}`;
+}
+
+
+// =====================================================
+// CREATE EMPTY DECK
+// =====================================================
+
+function createEmptyDeck(
+  classId = "bear",
+  name = "New Deck"
+) {
   return {
-    id: `deck_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    id:
+      `deck_${Date.now()}_` +
+      Math.random().toString(36).slice(2, 8),
+
     name,
     classId,
     cards: [],
@@ -24,12 +72,18 @@ function createEmptyDeck(classId = "bear", name = "New Deck") {
   };
 }
 
+// =====================================================
+// CARD COUNTING
+// =====================================================
+
 function countCards(deck) {
   return deck.cards.length;
 }
 
 function countCardCopies(deck, id) {
-  return deck.cards.filter(c => c === id).length;
+  return deck.cards.filter(
+    cardId => cardId === id
+  ).length;
 }
 
 function getDeckCategoryCounts(deck) {
@@ -37,103 +91,218 @@ function getDeckCategoryCounts(deck) {
     combat: deck.cards.filter(
       id => getBearAbility(id) != null
     ).length,
+
     energy: deck.cards.filter(
       id => getEnergyCard(id) != null
     ).length
   };
 }
 
-function canAddCardToDeck(deck, cardId, achievements = []) {
-  if (!deck || !Array.isArray(deck.cards)) {
-    return { success: false, message: "Invalid deck." };
+// =====================================================
+// CARD UNLOCK CHECK
+// =====================================================
+
+function isDeckCardUnlocked(
+  card,
+  achievements = []
+) {
+  if (!card) return false;
+
+  if (getBearAbility(card.id)) {
+    return isBearAbilityUnlocked(
+      card.id,
+      achievements
+    );
+  }
+
+  if (getEnergyCard(card.id)) {
+    return (
+      card.unlockedByDefault === true ||
+      (
+        card.achievementId != null &&
+        achievements.includes(card.achievementId)
+      )
+    );
+  }
+
+  return false;
+}
+
+// =====================================================
+// CHECK IF A CARD CAN BE ADDED
+// =====================================================
+
+function canAddCardToDeck(
+  deck,
+  cardId,
+  achievements = []
+) {
+  if (
+    !deck ||
+    !Array.isArray(deck.cards)
+  ) {
+    return {
+      success: false,
+      message: "Invalid deck."
+    };
   }
 
   const ability = getBearAbility(cardId);
   const energy = getEnergyCard(cardId);
 
   if (!ability && !energy) {
-    return { success: false, message: "Unknown card." };
-  }
-
-  if (ability && deck.classId !== "bear") {
-    return { success: false, message: "Wrong class." };
-  }
-
-  if (ability && !isBearAbilityUnlocked(cardId, achievements)) {
     return {
       success: false,
-      message: `${ability.name} is locked.`
+      message: "Unknown card."
     };
   }
 
   if (
-    energy &&
-    !(energy.unlockedByDefault ||
-      achievements.includes(energy.achievementId))
+    ability &&
+    deck.classId !== "bear"
   ) {
     return {
       success: false,
-      message: `${energy.name} is locked.`
+      message: "Wrong class."
     };
   }
 
+  const card = ability || energy;
+
+  if (
+    !isDeckCardUnlocked(
+      card,
+      achievements
+    )
+  ) {
+    return {
+      success: false,
+      message:
+        `${card.name} is locked. ` +
+        "Complete its achievement to unlock it."
+    };
+  }
+
+  // Check the individual card copy limit.
   const limit = ability
     ? getBearCardCopyLimit(cardId)
     : energy.maxCopies;
 
-  if (countCardCopies(deck, cardId) >= limit) {
-    return { success: false, message: "Copy limit reached." };
-  }
-
-  const { combat, energy: energyCount } =
-    getDeckCategoryCounts(deck);
-
-  if (ability && combat >= 30) {
+  if (
+    countCardCopies(deck, cardId) >= limit
+  ) {
     return {
       success: false,
-      message: "Maximum 30 Combat cards allowed."
+      message:
+        `${card.name} has reached its copy limit.`
     };
   }
 
-  if (energy && energyCount >= 30) {
+  const {
+    combat,
+    energy: energyCount
+  } = getDeckCategoryCounts(deck);
+
+  // Maximum Combat cards.
+  if (
+    ability &&
+    combat >= DECK_BUILDER_RULES.maxCombatCards
+  ) {
     return {
       success: false,
-      message: "Maximum 30 Energy cards allowed."
+      message:
+        "Maximum 30 Combat cards allowed."
     };
   }
 
-  if (deck.cards.length >= 40) {
+  // Maximum Energy cards.
+  if (
+    energy &&
+    energyCount >= DECK_BUILDER_RULES.maxEnergyCards
+  ) {
     return {
       success: false,
-      message: "Deck is full (40/40). Remove a card first."
+      message:
+        "Maximum 30 Energy cards allowed."
     };
   }
 
-  const nextCombat = combat + (ability ? 1 : 0);
-  const nextEnergy = energyCount + (energy ? 1 : 0);
-  const slotsLeft = 40 - (deck.cards.length + 1);
+  // Maximum total cards.
+  if (
+    deck.cards.length >=
+    DECK_BUILDER_RULES.maxCards
+  ) {
+    return {
+      success: false,
+      message:
+        "Deck is full (40/40). Remove a card first."
+    };
+  }
 
-  const neededCombat = Math.max(0, 10 - nextCombat);
-  const neededEnergy = Math.max(0, 10 - nextEnergy);
+  // Reserve enough space to meet minimums.
+  const nextCombat =
+    combat + (ability ? 1 : 0);
 
-  if (neededCombat + neededEnergy > slotsLeft) {
+  const nextEnergy =
+    energyCount + (energy ? 1 : 0);
+
+  const slotsLeft =
+    DECK_BUILDER_RULES.maxCards -
+    (deck.cards.length + 1);
+
+  const neededCombat = Math.max(
+    0,
+    DECK_BUILDER_RULES.minCombatCards -
+      nextCombat
+  );
+
+  const neededEnergy = Math.max(
+    0,
+    DECK_BUILDER_RULES.minEnergyCards -
+      nextEnergy
+  );
+
+  if (
+    neededCombat + neededEnergy >
+    slotsLeft
+  ) {
     return {
       success: false,
       message: ability
-        ? "Cannot add Combat. Reserve room for at least 10 Energy cards."
-        : "Cannot add Energy. Reserve room for at least 10 Combat cards."
+        ? "Reserve room for at least 10 Energy cards."
+        : "Reserve room for at least 10 Combat cards."
     };
   }
 
-  return { success: true, message: "Card can be added." };
+  return {
+    success: true,
+    message: "Card can be added."
+  };
 }
 
-function addCardToDeck(deck, cardId, achievements = []) {
-  const check = canAddCardToDeck(deck, cardId, achievements);
+// =====================================================
+// ADD CARD
+// =====================================================
 
-  if (!check.success) return check;
+function addCardToDeck(
+  deck,
+  cardId,
+  achievements = []
+) {
+  const check = canAddCardToDeck(
+    deck,
+    cardId,
+    achievements
+  );
 
-  const card = getBearAbility(cardId) || getEnergyCard(cardId);
+  if (!check.success) {
+    return check;
+  }
+
+  const card =
+    getBearAbility(cardId) ||
+    getEnergyCard(cardId);
+
   deck.cards.push(cardId);
 
   return {
@@ -142,18 +311,42 @@ function addCardToDeck(deck, cardId, achievements = []) {
   };
 }
 
-// Removal is always allowed.
-function removeCardFromDeck(deck, cardId) {
-  const index = deck.cards.indexOf(cardId);
-  if (index < 0) return false;
+// =====================================================
+// REMOVE CARD
+// =====================================================
+
+function removeCardFromDeck(
+  deck,
+  cardId
+) {
+  const index =
+    deck.cards.indexOf(cardId);
+
+  if (index < 0) {
+    return false;
+  }
 
   deck.cards.splice(index, 1);
+
   return true;
 }
 
-function validateFullDeck(deck, achievements = []) {
-  if (!deck || !Array.isArray(deck.cards)) {
-    return { valid: false, errors: ["Invalid deck."] };
+// =====================================================
+// VALIDATE FULL DECK
+// =====================================================
+
+function validateFullDeck(
+  deck,
+  achievements = []
+) {
+  if (
+    !deck ||
+    !Array.isArray(deck.cards)
+  ) {
+    return {
+      valid: false,
+      errors: ["Invalid deck."]
+    };
   }
 
   const errors = [];
@@ -162,9 +355,14 @@ function validateFullDeck(deck, achievements = []) {
     errors.push("Unsupported class.");
   }
 
-  if (deck.cards.length !== 40) {
+  // Total cards.
+  if (
+    deck.cards.length !==
+    DECK_BUILDER_RULES.maxCards
+  ) {
     errors.push(
-      `Deck must contain exactly 40 cards (${deck.cards.length}/40).`
+      `Deck must contain exactly 40 cards ` +
+      `(${deck.cards.length}/40).`
     );
   }
 
@@ -176,56 +374,89 @@ function validateFullDeck(deck, achievements = []) {
     id => getEnergyCard(id) != null
   );
 
-  if (combat.length < 10) {
+  // Minimum Combat.
+  if (
+    combat.length <
+    DECK_BUILDER_RULES.minCombatCards
+  ) {
     errors.push(
-      `Deck needs at least 10 Combat cards (${combat.length}/10).`
+      `Deck needs at least 10 Combat cards ` +
+      `(${combat.length}/10).`
     );
   }
 
-  if (energy.length < 10) {
+  // Minimum Energy.
+  if (
+    energy.length <
+    DECK_BUILDER_RULES.minEnergyCards
+  ) {
     errors.push(
-      `Deck needs at least 10 Energy cards (${energy.length}/10).`
+      `Deck needs at least 10 Energy cards ` +
+      `(${energy.length}/10).`
     );
   }
 
-  if (combat.length > 30) {
+  // Maximum Combat.
+  if (
+    combat.length >
+    DECK_BUILDER_RULES.maxCombatCards
+  ) {
     errors.push(
-      `Deck allows at most 30 Combat cards (${combat.length}/30).`
+      `Deck allows at most 30 Combat cards ` +
+      `(${combat.length}/30).`
     );
   }
 
-  if (energy.length > 30) {
+  // Maximum Energy.
+  if (
+    energy.length >
+    DECK_BUILDER_RULES.maxEnergyCards
+  ) {
     errors.push(
-      `Deck allows at most 30 Energy cards (${energy.length}/30).`
+      `Deck allows at most 30 Energy cards ` +
+      `(${energy.length}/30).`
     );
   }
 
-  const uniqueCombatCards = new Set(combat).size;
+  // Unique Combat card requirement.
+  const uniqueCombatCards =
+    new Set(combat).size;
 
-  if (uniqueCombatCards < 4) {
+  if (
+    uniqueCombatCards <
+    DECK_BUILDER_RULES.minUniqueCombatCards
+  ) {
     errors.push(
-      `Deck requires at least 4 unique Combat cards (${uniqueCombatCards}/4).`
+      `Deck requires at least 4 unique Combat cards ` +
+      `(${uniqueCombatCards}/4).`
     );
   }
 
+  // Check individual cards.
   const counts = {};
 
   for (const id of deck.cards) {
     const ability = getBearAbility(id);
-    const card = ability || getEnergyCard(id);
+    const card =
+      ability || getEnergyCard(id);
 
     if (!card) continue;
 
-    counts[id] = (counts[id] || 0) + 1;
+    counts[id] =
+      (counts[id] || 0) + 1;
 
-    const unlocked = ability
-      ? isBearAbilityUnlocked(id, achievements)
-      : card.unlockedByDefault ||
-        achievements.includes(card.achievementId);
+    if (
+      !isDeckCardUnlocked(
+        card,
+        achievements
+      )
+    ) {
+      const message =
+        `${card.name} is locked.`;
 
-    if (!unlocked) {
-      const message = `${card.name} is locked.`;
-      if (!errors.includes(message)) errors.push(message);
+      if (!errors.includes(message)) {
+        errors.push(message);
+      }
     }
 
     const limit = ability
@@ -233,13 +464,23 @@ function validateFullDeck(deck, achievements = []) {
       : card.maxCopies;
 
     if (counts[id] > limit) {
-      const message = `${card.name} exceeds its copy limit.`;
-      if (!errors.includes(message)) errors.push(message);
+      const message =
+        `${card.name} exceeds its copy limit.`;
+
+      if (!errors.includes(message)) {
+        errors.push(message);
+      }
     }
   }
 
-  if (combat.length + energy.length !== deck.cards.length) {
-    errors.push("Deck contains unknown cards.");
+  // Unknown card detection.
+  if (
+    combat.length + energy.length !==
+    deck.cards.length
+  ) {
+    errors.push(
+      "Deck contains unknown cards."
+    );
   }
 
   return {
@@ -252,9 +493,29 @@ function validateFullDeck(deck, achievements = []) {
   };
 }
 
-// Original 20 Combat / 20 Energy starter deck.
+// =====================================================
+// BEAR STARTER DECK
+// =====================================================
+
+/**
+ * Creates the Forest Guardian starter deck.
+ *
+ * 40 total cards:
+ * - 20 Combat
+ * - 20 Energy
+ *
+ * The Energy cards are distributed across
+ * all six default-unlocked Energy types.
+ */
 function createStarterBearDeck() {
-  const deck = createEmptyDeck("bear", "Forest Guardian");
+  const deck = createEmptyDeck(
+    "bear",
+    "Forest Guardian"
+  );
+
+  // ---------------------------------------------
+  // STARTING COMBAT CARDS (20)
+  // ---------------------------------------------
 
   const combat = {
     swipe: 3,
@@ -266,64 +527,150 @@ function createStarterBearDeck() {
     maul: 2
   };
 
-  for (const [id, copies] of Object.entries(combat)) {
-    for (let i = 0; i < copies; i++) {
+  // ---------------------------------------------
+  // STARTING ENERGY CARDS (20)
+  // ---------------------------------------------
+
+  const energy = {
+    basicEnergy: 5,
+    doubleEnergy: 5,
+    vitalEnergy: 4,
+    recoveryEnergy: 3,
+    fierceEnergy: 2,
+    protectiveEnergy: 1
+  };
+
+  // Add Combat cards.
+  for (
+    const [id, copies]
+    of Object.entries(combat)
+  ) {
+    for (
+      let i = 0;
+      i < copies;
+      i++
+    ) {
       deck.cards.push(id);
     }
   }
 
-  for (let i = 0; i < 20; i++) {
-    deck.cards.push("basicEnergy");
+  // Add Energy cards.
+  for (
+    const [id, copies]
+    of Object.entries(energy)
+  ) {
+    for (
+      let i = 0;
+      i < copies;
+      i++
+    ) {
+      deck.cards.push(id);
+    }
   }
 
   return deck;
 }
 
+// =====================================================
+// LOAD SAVED DECKS
+// =====================================================
+
 function loadSavedDecks() {
   try {
-    const raw = localStorage.getItem(DB_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
+    const raw =
+      localStorage.getItem(getDeckStorageKey());
+
+    const parsed =
+      raw ? JSON.parse(raw) : [];
 
     return Array.isArray(parsed)
-      ? parsed.filter(d => d && Array.isArray(d.cards))
+      ? parsed.filter(
+          deck =>
+            deck &&
+            Array.isArray(deck.cards)
+        )
       : [];
+
   } catch (error) {
-    console.error("Could not load decks:", error);
+    console.error(
+      "Could not load decks:",
+      error
+    );
+
     return [];
   }
 }
 
+// =====================================================
+// PERSIST SAVED DECKS
+// =====================================================
+
 function persistSavedDecks(decks) {
   try {
     localStorage.setItem(
-      DB_STORAGE_KEY,
+      getDeckStorageKey(),
       JSON.stringify(decks)
     );
+
     return true;
+
   } catch (error) {
-    console.error("Could not save decks:", error);
+    console.error(
+      "Could not save decks:",
+      error
+    );
+
     return false;
   }
 }
 
-function saveDeckToLibrary(deck, achievements = []) {
-  const validation = validateFullDeck(deck, achievements);
+// =====================================================
+// SAVE DECK
+// =====================================================
+
+function saveDeckToLibrary(
+  deck,
+  achievements = []
+) {
+  const validation =
+    validateFullDeck(
+      deck,
+      achievements
+    );
 
   if (!validation.valid) {
-    return { success: false, errors: validation.errors };
-  }
-
-  const decks = loadSavedDecks();
-  const index = decks.findIndex(d => d.id === deck.id);
-
-  if (index < 0 && decks.length >= 10) {
     return {
       success: false,
-      errors: ["Maximum 10 saved decks."]
+      errors: validation.errors
     };
   }
 
-  const copy = JSON.parse(JSON.stringify(deck));
+  const decks =
+    loadSavedDecks();
+
+  const index =
+    decks.findIndex(
+      saved =>
+        saved.id === deck.id
+    );
+
+  if (
+    index < 0 &&
+    decks.length >=
+    DECK_BUILDER_RULES.maxSavedDecks
+  ) {
+    return {
+      success: false,
+      errors: [
+        "Maximum 10 saved decks."
+      ]
+    };
+  }
+
+  const copy =
+    JSON.parse(
+      JSON.stringify(deck)
+    );
 
   if (index >= 0) {
     decks[index] = copy;
@@ -331,92 +678,180 @@ function saveDeckToLibrary(deck, achievements = []) {
     decks.push(copy);
   }
 
-  if (!persistSavedDecks(decks)) {
+  if (
+    !persistSavedDecks(decks)
+  ) {
     return {
       success: false,
-      errors: ["Could not access browser storage."]
+      errors: [
+        "Could not access browser storage."
+      ]
     };
   }
 
-  return { success: true, deck: copy };
+  return {
+    success: true,
+    deck: copy
+  };
 }
+
+// =====================================================
+// DELETE SAVED DECK
+// =====================================================
 
 function deleteSavedDeck(deckId) {
-  const decks = loadSavedDecks();
-  const remaining = decks.filter(d => d.id !== deckId);
+  const decks =
+    loadSavedDecks();
 
-  return remaining.length !== decks.length &&
-    persistSavedDecks(remaining);
+  const remaining =
+    decks.filter(
+      deck =>
+        deck.id !== deckId
+    );
+
+  return (
+    remaining.length !== decks.length &&
+    persistSavedDecks(remaining)
+  );
 }
 
-function renameSavedDeck(deckId, newName) {
-  const name = newName.trim().slice(0, 28);
-  if (!name) return false;
+// =====================================================
+// RENAME SAVED DECK
+// =====================================================
 
-  const decks = loadSavedDecks();
-  const deck = decks.find(d => d.id === deckId);
+function renameSavedDeck(
+  deckId,
+  newName
+) {
+  const name =
+    newName.trim().slice(0, 28);
 
-  if (!deck) return false;
+  if (!name) {
+    return false;
+  }
+
+  const decks =
+    loadSavedDecks();
+
+  const deck =
+    decks.find(
+      item =>
+        item.id === deckId
+    );
+
+  if (!deck) {
+    return false;
+  }
 
   deck.name = name;
+
   return persistSavedDecks(decks);
 }
 
-// Equipped deck is separate from the viewed deck.
+// =====================================================
+// EQUIPPED DECK
+// =====================================================
+
 function getEquippedDeckId() {
   try {
-    const id = localStorage.getItem(DB_EQUIPPED_DECK_KEY);
-    const decks = loadSavedDecks();
+    const id =
+      localStorage.getItem(
+        getEquippedDeckStorageKey()
+      );
 
-    return decks.some(deck => deck.id === id) ? id : null;
+    const decks =
+      loadSavedDecks();
+
+    return decks.some(
+      deck => deck.id === id
+    )
+      ? id
+      : null;
+
   } catch (error) {
-    console.error("Could not load equipped deck:", error);
+    console.error(
+      "Could not load equipped deck:",
+      error
+    );
+
     return null;
   }
 }
 
-function equipSavedDeck(deckId, achievements = []) {
-  const deck = loadSavedDecks().find(
-    item => item.id === deckId
-  );
+// =====================================================
+// EQUIP SAVED DECK
+// =====================================================
+
+function equipSavedDeck(
+  deckId,
+  achievements = []
+) {
+  const deck =
+    loadSavedDecks().find(
+      item =>
+        item.id === deckId
+    );
 
   if (!deck) {
     return {
       success: false,
-      message: "Save this deck before equipping it."
+      message:
+        "Save this deck before equipping it."
     };
   }
 
-  const validation = validateFullDeck(deck, achievements);
+  const validation =
+    validateFullDeck(
+      deck,
+      achievements
+    );
 
   if (!validation.valid) {
     return {
       success: false,
-      message: validation.errors[0]
+      message:
+        validation.errors[0]
     };
   }
 
   try {
-    localStorage.setItem(DB_EQUIPPED_DECK_KEY, deckId);
+    localStorage.setItem(
+      getEquippedDeckStorageKey(),
+      deckId
+    );
 
     return {
       success: true,
-      message: `${deck.name} equipped!`
+      message:
+        `${deck.name} equipped!`
     };
+
   } catch (error) {
-    console.error("Could not equip deck:", error);
+    console.error(
+      "Could not equip deck:",
+      error
+    );
 
     return {
       success: false,
-      message: "Could not save equipped deck."
+      message:
+        "Could not save equipped deck."
     };
   }
 }
 
+// =====================================================
+// GET EQUIPPED DECK
+// =====================================================
+
 function getEquippedDeck() {
-  const id = getEquippedDeckId();
+  const id =
+    getEquippedDeckId();
 
   return id
-    ? loadSavedDecks().find(deck => deck.id === id) || null
+    ? loadSavedDecks().find(
+        deck =>
+          deck.id === id
+      ) || null
     : null;
 }

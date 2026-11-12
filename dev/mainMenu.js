@@ -6,22 +6,49 @@
  * Canvas: 1000 x 650
  */
 
+// =====================================================
+// MAIN MENU STATE
+// =====================================================
+
 let mmParticles = [];
 
 const MM_BUTTONS = [
-  { label: "Continue Adventure", state: "classSelection" },
-  { label: "Deck Builder", state: "deckBuilder" },
-  { label: "Choose Class", state: "classSelection" },
-  { label: "Achievements", state: null },
-  { label: "Profiles", state: "profileSelection" },
-  { label: "Settings", state: null }
+  {
+    label: "Continue Adventure",
+    state: "classSelection"
+  },
+  {
+    label: "Deck Builder",
+    state: "deckBuilder"
+  },
+  {
+    label: "Choose Class",
+    state: "classSelection"
+  },
+  {
+    label: "Achievements",
+    state: null
+  },
+  {
+    label: "Profiles",
+    state: "profileSelection"
+  },
+  {
+    label: "Settings",
+    state: null
+  }
 ];
 
-// Initialize magical particles.
+// =====================================================
+// SETUP
+// =====================================================
+
 function mmSetup() {
+
   mmParticles = [];
 
   for (let i = 0; i < 65; i++) {
+
     mmParticles.push({
       x: random(width),
       y: random(height),
@@ -33,8 +60,12 @@ function mmSetup() {
   }
 }
 
-// Button layout.
+// =====================================================
+// BUTTON LAYOUT
+// =====================================================
+
 function mmButtonBox(index) {
+
   return {
     x: 365,
     y: 275 + index * 53,
@@ -43,8 +74,12 @@ function mmButtonBox(index) {
   };
 }
 
-// Check if mouse is over a button.
+// =====================================================
+// HIT DETECTION
+// =====================================================
+
 function mmHit(button) {
+
   return (
     mouseX >= button.x &&
     mouseX <= button.x + button.w &&
@@ -53,26 +88,56 @@ function mmHit(button) {
   );
 }
 
-// Draw main menu.
+// =====================================================
+// DRAW MAIN MENU
+// =====================================================
+
 function mmDraw() {
+
   background(18, 12, 32);
 
-  // Background image.
-  if (mmBackground && mmBackground.width > 1) {
-    image(mmBackground, 0, 0, width, height);
+  // ---------------------------------------------
+  // BACKGROUND IMAGE
+  // ---------------------------------------------
+
+  if (
+    mmBackground &&
+    mmBackground.width > 1
+  ) {
+
+    image(
+      mmBackground,
+      0,
+      0,
+      width,
+      height
+    );
   }
 
-  // Slight dark overlay to help menu readability.
+  // Dark overlay for readability.
   noStroke();
   fill(10, 7, 22, 65);
-  rect(0, 0, width, height);
 
-  // Magical floating particles.
+  rect(
+    0,
+    0,
+    width,
+    height
+  );
+
+  // ---------------------------------------------
+  // MAGICAL FLOATING PARTICLES
+  // ---------------------------------------------
+
   for (const p of mmParticles) {
+
     p.y -= p.speed;
 
     const drift =
-      sin(frameCount * 0.01 + p.phase) * 5;
+      sin(
+        frameCount * 0.01 +
+        p.phase
+      ) * 5;
 
     if (p.y < -5) {
       p.y = height + 5;
@@ -80,7 +145,11 @@ function mmDraw() {
     }
 
     const alpha =
-      100 + sin(frameCount * 0.04 + p.phase) * 55;
+      100 +
+      sin(
+        frameCount * 0.04 +
+        p.phase
+      ) * 55;
 
     if (p.golden) {
       fill(255, 210, 110, alpha);
@@ -88,18 +157,41 @@ function mmDraw() {
       fill(185, 95, 255, alpha);
     }
 
-    circle(p.x + drift, p.y, p.size);
+    circle(
+      p.x + drift,
+      p.y,
+      p.size
+    );
   }
 
-  // Subtle corruption pulse on right side.
+  // ---------------------------------------------
+  // CORRUPTION PULSE
+  // ---------------------------------------------
+
   const pulse =
-    12 + sin(frameCount * 0.025) * 8;
+    12 +
+    sin(frameCount * 0.025) * 8;
 
   noStroke();
-  fill(145, 35, 220, pulse);
-  rect(width * 0.82, 0, width * 0.18, height);
 
-  // Main title.
+  fill(
+    145,
+    35,
+    220,
+    pulse
+  );
+
+  rect(
+    width * 0.82,
+    0,
+    width * 0.18,
+    height
+  );
+
+  // ---------------------------------------------
+  // MAIN TITLE
+  // ---------------------------------------------
+
   push();
 
   textFont("Georgia");
@@ -123,6 +215,7 @@ function mmDraw() {
   drawingContext.shadowBlur = 0;
 
   noStroke();
+
   fill("#d6b5e5");
   textSize(13);
 
@@ -132,25 +225,40 @@ function mmDraw() {
     142
   );
 
-  // Draw buttons.
+  // ---------------------------------------------
+  // MAIN MENU BUTTONS
+  // ---------------------------------------------
+
   MM_BUTTONS.forEach((item, index) => {
-    const button = mmButtonBox(index);
-    const hovered = mmHit(button);
+
+    const button =
+      mmButtonBox(index);
+
+    const hovered =
+      mmHit(button);
 
     drawingContext.shadowBlur =
       hovered ? 18 : 3;
 
     drawingContext.shadowColor =
-      hovered ? "#ffd071" : "#3a1a5b";
+      hovered
+        ? "#ffd071"
+        : "#3a1a5b";
 
     stroke(
-      hovered ? "#ffdb84" : "#a779bb"
+      hovered
+        ? "#ffdb84"
+        : "#a779bb"
     );
 
-    strokeWeight(hovered ? 2.6 : 1.3);
+    strokeWeight(
+      hovered ? 2.6 : 1.3
+    );
 
     fill(
-      hovered ? "#654122" : "#21162e"
+      hovered
+        ? "#654122"
+        : "#21162e"
     );
 
     rect(
@@ -166,7 +274,9 @@ function mmDraw() {
     noStroke();
 
     fill(
-      hovered ? "#fff1bf" : "#f3e0ff"
+      hovered
+        ? "#fff1bf"
+        : "#f3e0ff"
     );
 
     textSize(20);
@@ -180,26 +290,59 @@ function mmDraw() {
 
   pop();
 
-  // Show normal cursor for menu interaction.
+  // Normal cursor for main menu.
   cursor(ARROW);
 }
 
-// Handle menu clicks.
+// =====================================================
+// HANDLE MAIN MENU CLICKS
+// =====================================================
+
 function mmMousePressed() {
-  for (let i = 0; i < MM_BUTTONS.length; i++) {
-    const button = mmButtonBox(i);
+
+  for (
+    let i = 0;
+    i < MM_BUTTONS.length;
+    i++
+  ) {
+
+    const button =
+      mmButtonBox(i);
 
     if (!mmHit(button)) {
       continue;
     }
 
-    const item = MM_BUTTONS[i];
+    const item =
+      MM_BUTTONS[i];
 
+    // Placeholder buttons.
     if (!item.state) {
       return false;
     }
 
+    // -----------------------------------------
+    // PROFILE SELECTION
+    // -----------------------------------------
+
+    if (
+      item.state ===
+      "profileSelection"
+    ) {
+
+      // Remember that the player entered
+      // Profiles from the main menu.
+      openProfileSelection("mainMenu");
+
+      return false;
+    }
+
+    // -----------------------------------------
+    // OTHER MAIN MENU BUTTONS
+    // -----------------------------------------
+
     gameState = item.state;
+
     return false;
   }
 

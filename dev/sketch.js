@@ -1,34 +1,74 @@
-
 /**
  * WHIMSY & WOE
  * Main Game Controller
  *
- * Handles startup, profiles, main menu,
- * class selection, and deck builder.
+ * Handles:
+ * - Startup screen
+ * - Profile selection
+ * - Main menu
+ * - Class selection
+ * - Deck builder
+ * - Custom deck naming window
+ * - Unsaved deck confirmation
+ *
+ * Canvas: 1000 x 650
  */
+
+// =====================================================
+// GAME STATE
+// =====================================================
 
 let gameState = "startup";
 
+// Remembers which screen opened profile selection.
+let profileReturnState = "startup";
+
+// Background images.
 let forestBackground;
 let mmBackground;
+
+// =====================================================
+// PROFILE NAVIGATION
+// =====================================================
+
+/**
+ * Opens profile selection while remembering
+ * which screen the player came from.
+ */
+function openProfileSelection(fromState = gameState) {
+  profileReturnState =
+    fromState === "mainMenu"
+      ? "mainMenu"
+      : "startup";
+
+  gameState = "profileSelection";
+}
+
+/**
+ * Returns to the screen that originally
+ * opened profile selection.
+ */
+function returnFromProfileSelection() {
+  gameState = profileReturnState;
+  cursor(ARROW);
+}
 
 // =====================================================
 // PRELOAD
 // =====================================================
 
 function preload() {
-
-  // Startup background
+  // Startup background.
   forestBackground = loadImage(
     "assets/corrupted-forest-background.png"
   );
 
-  // Main menu background
+  // Main menu background.
   mmBackground = loadImage(
     "assets/main-menu-background.png"
   );
 
-  // Deck Builder artwork
+  // Deck builder artwork.
   dbPreload();
 }
 
@@ -37,18 +77,16 @@ function preload() {
 // =====================================================
 
 function setup() {
-
-  // Only create one canvas for the entire game.
+  // One shared canvas for the entire game.
   createCanvas(1000, 650);
 
-  // Load player profiles.
+  // Load saved player profiles.
   loadProfiles();
 
-  // Initialize main menu.
+  // Initialize main menu particles.
   mmSetup();
 
-  // Initialize deck builder.
-  dbSetup();
+  // Deck builder setup runs when entering that screen.
 }
 
 // =====================================================
@@ -56,27 +94,31 @@ function setup() {
 // =====================================================
 
 function draw() {
+  switch (gameState) {
+    case "startup":
+      drawStartupScreen();
+      break;
 
-  if (gameState === "startup") {
+    case "profileSelection":
+      drawProfileSelection();
+      break;
 
-    drawStartupScreen();
+    case "mainMenu":
+      mmDraw();
+      break;
 
-  } else if (gameState === "profileSelection") {
+    case "deckBuilder":
+      dbDraw();
+      break;
 
-    drawProfileSelection();
+    case "classSelection":
+      csDraw();
+      break;
 
-  } else if (gameState === "mainMenu") {
-
-    mmDraw();
-
-  } else if (gameState === "deckBuilder") {
-
-    dbDraw();
-
-  } else if (gameState === "classSelection") {
-
-    csDraw();
-    
+    default:
+      console.warn("Unknown game state:", gameState);
+      gameState = "startup";
+      break;
   }
 }
 
@@ -85,8 +127,7 @@ function draw() {
 // =====================================================
 
 function keyPressed() {
-
-  // Profile creation input.
+  // Profile creation input takes priority.
   if (
     gameState === "profileSelection" &&
     creatingProfile
@@ -94,16 +135,61 @@ function keyPressed() {
     return handleCreateProfileKey();
   }
 
-  // Startup -> Profile Selection
+  // Deck builder modals take priority over navigation.
+  if (gameState === "deckBuilder") {
+    // This handler processes ordinary characters as well
+    // as Enter, Escape and Backspace in the updated
+    // deckBuilderScreen.js.
+    if (dbNamingModalOpen) {
+      return dbHandleNamingModalKey();
+    }
+
+    if (dbRenameModalOpen) {
+      return dbHandleRenameModalKey();
+    }
+
+    if (dbDeleteModalOpen) {
+      return dbHandleDeleteModalKey();
+    }
+
+    // Unsaved changes confirmation.
+    if (dbExitModalOpen) {
+      if (keyCode === ESCAPE) {
+        dbCloseExitModal();
+      }
+      return false;
+    }
+
+    // Leave only when no other modal is open.
+    if (keyCode === ESCAPE) {
+      return dbLeaveToMainMenu();
+    }
+  }
+
+  // Startup -> Profile Selection.
   if (
     gameState === "startup" &&
     keyCode === ENTER
   ) {
-    gameState = "profileSelection";
+    openProfileSelection("startup");
     return false;
   }
 
-  // Class Selection -> Main Menu
+  // Profile Selection -> Previous Screen.
+  if (
+    gameState === "profileSelection" &&
+    keyCode === ESCAPE
+  ) {
+    if (deletingProfile) {
+      closeDeleteProfile();
+      return false;
+    }
+
+    returnFromProfileSelection();
+    return false;
+  }
+
+  // Class Selection -> Main Menu.
   if (
     gameState === "classSelection" &&
     keyCode === ESCAPE
@@ -112,13 +198,7 @@ function keyPressed() {
     return false;
   }
 
-  // Deck Builder -> Main Menu
-  if (
-    gameState === "deckBuilder" &&
-    keyCode === ESCAPE
-  ) {
-    return dbLeaveToMainMenu();
-  }
+  return true;
 }
 
 // =====================================================
@@ -126,37 +206,29 @@ function keyPressed() {
 // =====================================================
 
 function mousePressed() {
+  switch (gameState) {
+    case "startup":
+      if (isMouseOverPlay()) {
+        openProfileSelection("startup");
+      }
+      return false;
 
-  // Startup screen
-  if (gameState === "startup") {
+    case "profileSelection":
+      return handleProfileClick();
 
-    if (isMouseOverPlay()) {
-      gameState = "profileSelection";
-    }
+    case "mainMenu":
+      return mmMousePressed();
 
-  // Profile selection
-  } else if (gameState === "profileSelection") {
+    case "deckBuilder":
+      // Deck builder handles its own modal click routing.
+      return dbMousePressed();
 
-    handleProfileClick();
+    case "classSelection":
+      return csMousePressed();
 
-  // Main menu
-  } else if (gameState === "mainMenu") {
-
-    return mmMousePressed();
-
-  // Deck Builder
-  } else if (gameState === "deckBuilder") {
-
-    return dbMousePressed();
-
-  //Class Selection
-  } else if (gameState === "classSelection") {
-    
-    return csMousePressed();
+    default:
+      return false;
   }
-
-
-  return false;
 }
 
 // =====================================================
@@ -164,18 +236,24 @@ function mousePressed() {
 // =====================================================
 
 function mouseWheel(event) {
-
   if (gameState === "deckBuilder") {
+    // Never scroll the deck builder behind a modal.
+    if (dbNamingModalOpen || dbRenameModalOpen || dbDeleteModalOpen || dbExitModalOpen) {
+      return false;
+    }
+
     return dbMouseWheel(event);
   }
+
+  return true;
 }
 
 // =====================================================
-// PROFILE NAME INPUT
+// KEYBOARD TEXT INPUT
 // =====================================================
 
 function keyTyped() {
-
+  // Profile naming still uses keyTyped().
   if (
     gameState === "profileSelection" &&
     creatingProfile
@@ -183,4 +261,23 @@ function keyTyped() {
     handleCreateProfileTyped();
     return false;
   }
+
+  // Deck naming is processed by keyPressed(), so do not
+  // append the same character a second time here.
+  if (
+    gameState === "deckBuilder" &&
+    (dbNamingModalOpen || dbRenameModalOpen || dbDeleteModalOpen)
+  ) {
+    return false;
+  }
+
+  // Block typing while the exit confirmation is visible.
+  if (
+    gameState === "deckBuilder" &&
+    dbExitModalOpen
+  ) {
+    return false;
+  }
+
+  return true;
 }

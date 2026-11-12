@@ -102,16 +102,39 @@ function createProfile(slot, name) {
 // =====================================================
 
 function deleteProfile(slot) {
-  if (!profiles[slot]) return false;
+
+  if (!profiles[slot]) {
+    return false;
+  }
 
   const oldProfile = profiles[slot];
+
+  // Remove the profile from its slot.
   delete profiles[slot];
 
+  // Save the updated profile collection.
   if (!saveProfiles()) {
     profiles[slot] = oldProfile;
     return false;
   }
 
+  // Remove decks belonging only to this profile.
+  try {
+    localStorage.removeItem(
+      `ww_decks_profile_${oldProfile.id}`
+    );
+
+    localStorage.removeItem(
+      `ww_equipped_deck_profile_${oldProfile.id}`
+    );
+  } catch (error) {
+    console.error(
+      "Unable to remove profile deck data:",
+      error
+    );
+  }
+
+  // Clear the selected profile if it was deleted.
   if (
     selectedProfile &&
     selectedProfile.id === oldProfile.id
@@ -135,13 +158,26 @@ function isInsideRect(mx, my, x, y, w, h) {
   );
 }
 
-function enterProfileMainMenu(profile) {
-  if (!profile) return false;
+// =====================================================
+// ENTER MAIN MENU WITH SELECTED PROFILE
+// =====================================================
 
+function enterProfileMainMenu(profile) {
+
+  if (!profile) {
+    return false;
+  }
+
+  // Set the active profile.
   selectedProfile = profile;
 
+  // Close profile selection windows.
   creatingProfile = false;
   deletingProfile = false;
+
+  // Initialize the deck builder using
+  // this profile's individual storage.
+  dbSetup();
 
   console.log(
     "Entering main menu with profile:",
@@ -149,6 +185,7 @@ function enterProfileMainMenu(profile) {
   );
 
   gameState = "mainMenu";
+
   cursor(ARROW);
 
   return true;
@@ -354,7 +391,7 @@ function handleProfileClick() {
       430, 525, 140, 45
     )
   ) {
-    gameState = "startup";
+    returnFromProfileSelection();
     return false;
   }
 
