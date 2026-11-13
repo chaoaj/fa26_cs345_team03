@@ -1,0 +1,3 @@
+- Added the corrupted bear card designs for it's combat cards and it's energy cards.
+- Added their logic in the classes section inside the new boss folder.
+- Added the class card for the Corrupted Bear and the Basic bear card.
