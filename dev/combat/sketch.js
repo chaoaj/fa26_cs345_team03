@@ -2,6 +2,7 @@
 
 const ATTACK_DAMAGE = 15;
 const HEAL_AMOUNT = 12;
+const ENEMY_HEAL_THRESHOLD = 0.3;
 const MAX_BOARD = 4; // most cards you can have in the arena at once
 
 // Canvas size: same on every screen of the game
@@ -19,6 +20,7 @@ const SANITY_BAR_Y = 510; // your big shared sanity bar, under the arena
 const HAND_Y = 590;
 
 let enemy;
+let enemyAI;
 let board = [];           // your cards in the arena
 let hand = [];            // your cards in hand
 let buttons = [];         // heal button
@@ -73,6 +75,8 @@ function startBattle() {
   enemy = new Card("Enemy", width / 2, ENEMY_Y, color(38, 18, 52), BOARD_W, BOARD_H);
   enemy.side = "enemy";
   enemy.isShadow = true; // dark body with glowing eyes
+
+  enemyAI = new EnemyAI({healThreshold: ENEMY_HEAL_THRESHOLD});
 
   playerSanity = new PlayerSanity(width / 2, SANITY_BAR_Y, 480, 26);
 
@@ -253,8 +257,20 @@ function startEnemyTurn() {
     if (gameOverMessage) {
       return;
     }
-    performAttack(enemy);
+    const action = enemyAI.chooseAction(enemy.sanity, MAX_SANITY);
+    if (action === "heal") {
+      enemyHeal();
+    } else {
+      performAttack(enemy);
+    }
   }, 700);
+}
+
+function enemyHeal() {
+  effects.push(new HealBurst(enemy, () => {
+    enemy.heal(HEAL_AMOUNT);
+    endTurn();
+  }));
 }
 
 // Checks for a winner, then passes the turn to the other side
