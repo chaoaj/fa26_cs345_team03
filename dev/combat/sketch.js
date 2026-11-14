@@ -1,9 +1,7 @@
-// sketch.js
-// Drag cards from your hand into the arena, then take turns attacking and healing.
+// Drag cards from your hand into the arena, drag an arrow to the enemy to attack, heal yourself using the heal button.
 
 const ATTACK_DAMAGE = 15;
-const HEAL_AMOUNT = 10;
-const ENEMY_HEAL_THRESHOLD = 0.3;
+const HEAL_AMOUNT = 12;
 const MAX_BOARD = 4; // most cards you can have in the arena at once
 
 // Canvas size: same on every screen of the game
@@ -21,11 +19,9 @@ const SANITY_BAR_Y = 510; // your big shared sanity bar, under the arena
 const HAND_Y = 590;
 
 let enemy;
-let enemyAI;
 let board = [];           // your cards in the arena
 let hand = [];            // your cards in hand
-let buttons = [];         // the two shared buttons: Attack and Heal
-let activeIndex = 0;      // which arena card (left to right) acts next on your turn
+let buttons = [];         // heal button
 let effects = [];         // animations currently playing
 let currentTurn = null;   // "player", "enemy", or null before the first card is played
 let busy = false;         // true while an animation plays; blocks clicks
@@ -38,11 +34,14 @@ let playerSanity;         // your one shared sanity bar
 
 let selectedCard = null;  // the hand card the mouse is over (shown enlarged)
 let draggedCard = null;   // the card being dragged
-let draggedFrom = null;   // "hand" or "arena": where the dragged card came from
-let dragOffsetX = 0;
+let draggedFrom = null;   // where the dragged card came from
+let dragOffsetX = 0;      // mouse offset from the card's center, so the card does not jump 
 let dragOffsetY = 0;
 let dragStartX = 0;       // where the mouse was pressed, to tell a click from a real drag
 let dragStartY = 0;
+
+let hoveredArenaCard = null;                // arena card under the mouse that can attack
+let aimingCard = null;                      // arena card currently pulling the attack arrow
 
 function setup() {
   createCanvas(CANVAS_W, CANVAS_H);
@@ -52,12 +51,10 @@ function setup() {
 
   arena = { x: width / 2, y: ARENA_Y, w: 700, h: 246 };
 
-  // The two shared action buttons, stacked to the right of the arena.
-  // They act for whoever's turn it is: the active card on your turn, the enemy on its turn.
+  // Heal button, to the right of the arena
   const bx = arena.x + arena.w / 2 + 12;
   buttons = [
-    new Button("Attack", null, "attack", bx, ARENA_Y - 48),
-    new Button("Heal", null, "heal", bx, ARENA_Y + 8),
+    new Button("Heal", null, "heal", bx, ARENA_Y  - 20),
   ];
   for (const b of buttons) {
     b.w = 90;
@@ -76,14 +73,12 @@ function startBattle() {
   enemy = new Card("Enemy", width / 2, ENEMY_Y, color(38, 18, 52), BOARD_W, BOARD_H);
   enemy.side = "enemy";
   enemy.isShadow = true; // dark body with glowing eyes
-  enemyAI = new EnemyAI({ healThreshold: ENEMY_HEAL_THRESHOLD });
 
   playerSanity = new PlayerSanity(width / 2, SANITY_BAR_Y, 480, 26);
 
   board = [];
   hand = [];
   effects = [];
-  activeIndex = 0;
 
   const names = ["Brawler", "Trickster", "Guardian", "Mystic", "Ranger", "Herbalist", "Bard"];
   for (const name of names) {
@@ -119,10 +114,17 @@ function startBattle() {
 function draw() {
   drawBackground(); // forest scene + fireflies
   updateHover();
+  updateArenaHover();
 
   drawTurnText();
 
+  const lockedOn = aimingCard && enemy.contains(mouseX, mouseY);
+
   enemy.update();
+
+  if (lockedOn) {
+    drawCardGlow(enemy, [255, 70, 210]);
+  }
   enemy.draw();
 
   drawArenaZone();
@@ -130,16 +132,11 @@ function draw() {
   discardPile.draw();
 
   for (const card of board) {
-    if (card !== draggedCard) {
-      card.update();
-      card.draw();
+    card.update();
+    if (card === hoveredArenaCard) {
+      drawCardGlow(card, [255, 210, 110]);
     }
-  }
-
-  // Gold glow around the card whose turn it is
-  const actor = activeActor();
-  if (actor && actor.side === "player" && actor !== draggedCard && !gameOverMessage) {
-    drawActiveGlow(actor);
+    card.draw();
   }
 
   for (const b of buttons) {
@@ -149,10 +146,6 @@ function draw() {
   playerSanity.update();
   playerSanity.draw();
 
-  // While dragging an arena card, show where to drop it to take it back
-  if (draggedCard && draggedFrom === "arena") {
-    drawHandDropZone();
-  }
 
   // Hand cards (the selected and dragged ones are drawn later, on top)
   for (const card of hand) {
@@ -182,8 +175,12 @@ function draw() {
     restartButton.draw(true);
   }
 
+  if (aimingCard) {
+    drawAttackArrow(aimingCard);
+  }
+
   // Hovering a card in play shows its info panel
-  if (!draggedCard) {
+  if (!draggedCard && !aimingCard) {
     for (const card of [...board, enemy]) {
       if (card.contains(mouseX, mouseY)) {
         drawInfoPanel(card);
@@ -202,25 +199,19 @@ function draw() {
     draggedCard.draw();
   }
 
-  drawGameCursor(getCursorMode());
+  if (!aimingCard) {
+    drawGameCursor(getCursorMode());
+  }
 }
 
 // ---------- Turns and actions ----------
 
-// Who the two buttons act for right now: the enemy on its turn,
-// or on your turn the arena card whose turn it is (null if nobody can act)
-function activeActor() {
-  if (currentTurn === "enemy") return enemy;
-  if (currentTurn === "player") return board[activeIndex] || null;
-  return null;
-}
-
-// The buttons work when someone can act and nothing is animating
+// The heal button works only on player's turn while nothing is animating
 function canUseButtons() {
-  return activeActor() !== null && !busy && !gameOverMessage;
+  return currentTurn === "player" && !busy && !gameOverMessage;
 }
 
-// You can move cards any time except during the enemy's turn
+// Cards can be played except during the enemy's turn or an animation
 function canMoveCards() {
   return currentTurn !== "enemy" && !busy && !gameOverMessage;
 }
@@ -230,30 +221,43 @@ function canPlayCard() {
   return canMoveCards() && board.length < MAX_BOARD;
 }
 
-function performAction(actor, action) {
-  if (action === "attack") {
-    // Your cards attack the enemy; the enemy attacks your shared sanity
-    const target = actor.side === "player" ? enemy : playerSanity;
-
-    busy = true;
-    effects.push(new AttackProjectile(actor, target, () => {
-      target.takeDamage(ATTACK_DAMAGE);
-      endTurn();
-    }));
-  } else if (action === "heal") {
-    // Your cards heal your shared sanity; the enemy heals itself
-    const healTarget = actor.side === "player" ? playerSanity : actor;
-
-    busy = true;
-    effects.push(new HealBurst(actor, () => {
-      healTarget.heal(HEAL_AMOUNT);
-      endTurn();
-    }));
-  }
+// Any arena card can attack on player's turn while nothing is animating
+function canAim(card) {
+  return currentTurn === "player" && board.includes(card) && !busy && !gameOverMessage;
 }
 
-// Runs after every action: one of your cards acts (left to right, wrapping around),
-// then the enemy, then your next card.
+// Fires an orb at the target, damage lands on the impact, then the turn passes
+function performAttack(actor) {
+  const target = actor.side === "player" ? enemy : playerSanity;
+
+  busy = true;
+  effects.push(new AttackProjectile(actor, target, () => {
+    target.takeDamage(ATTACK_DAMAGE);
+    endTurn();
+  }));
+}
+
+// Restores the sanity bar, it costs one turn
+function healPlayer() {
+  busy = true;
+  effects.push(new HealBurst(playerSanity, () => {
+    playerSanity.heal(HEAL_AMOUNT);
+    endTurn();
+  }));
+}
+
+// Enemy turn: a short pause, then it attacks player's sanity bar
+function startEnemyTurn() {
+  busy = true;
+  setTimeout(() => { // pause so the enemy's hit does not land on top of player's
+    if (gameOverMessage) {
+      return;
+    }
+    performAttack(enemy);
+  }, 700);
+}
+
+// Checks for a winner, then passes the turn to the other side
 function endTurn() {
   if (enemy.sanity <= 0) {
     gameOverMessage = "Enemy went insane! You win.";
@@ -261,22 +265,17 @@ function endTurn() {
     gameOverMessage = "You lost your mind... Returning to checkpoint.";
   }
 
-  if (gameOverMessage) {
-    busy = false;
-    return;
-  }
-
   if (currentTurn === "player") {
-    activeIndex = board.length > 0 ? (activeIndex + 1) % board.length : 0;
     currentTurn = "enemy";
-    performAction(enemy, enemyAI.chooseAction(enemy.sanity, MAX_SANITY));
-    return;
+  } else {
+    currentTurn = "player";
   }
-
-  currentTurn = "player";
-  if (board.length === 0) activeIndex = 0;
-  else activeIndex %= board.length;
   busy = false;
+
+  // The enemy acts on its own...
+  if (currentTurn === "enemy" && !gameOverMessage) {
+    startEnemyTurn();
+  }
 }
 
 function drawTurnText() {
@@ -286,7 +285,7 @@ function drawTurnText() {
   if (currentTurn === null) message = "Drag a card into the arena to begin";
   else if (currentTurn === "enemy") message = "Enemy's turn";
   else if (board.length === 0) message = "Your turn: play a card";
-  else message = "Your turn: " + board[activeIndex].name;
+  else message = "Your turn: drag from any card to attack";
 
   push();
   fill(CREAM);
@@ -318,24 +317,18 @@ function mousePressed() {
     return;
   }
 
-  // Pick up a card from the arena (to take it back into your hand)
-  if (canMoveCards()) {
-    for (const card of board) {
-      if (card.contains(mouseX, mouseY)) {
-        draggedCard = card;
-        draggedFrom = "arena";
-        dragOffsetX = mouseX - card.x;
-        dragOffsetY = mouseY - card.y;
-        dragStartX = mouseX;
-        dragStartY = mouseY;
-        return;
-      }
+  // Pressing an arena card starts aiming
+  for (const card of board) {
+    if (canAim(card) && card.contains(mouseX, mouseY)) {
+      aimingCard = card;
+      return;
     }
   }
 
+  // Heal button
   for (const b of buttons) {
     if (b.contains(mouseX, mouseY) && canUseButtons()) {
-      performAction(activeActor(), b.action);
+      healPlayer();
       return;
     }
   }
@@ -354,17 +347,23 @@ function mouseDragged() {
 }
 
 function mouseReleased() {
+  // Releasing on the enemy attacks them, releasing anywhere else cancels the arrow
+  if (aimingCard) {
+    if (enemy.contains(mouseX, mouseY) && canAim(aimingCard)) {
+      performAttack(aimingCard);
+    }
+    aimingCard = null;
+    return;
+  }
+  
   if (draggedCard) {
     if (draggedFrom === "hand" && movedEnough() && canPlayCard() && isOverArena(mouseX, mouseY)) {
       playCard(draggedCard);
       selectedCard = null;
-    } else if (draggedFrom === "arena" && movedEnough() && isOverHand(mouseX, mouseY)) {
-      returnToHand(draggedCard);
     }
     draggedCard = null;
     draggedFrom = null;
     layoutHand();
-    layoutBoard(); // an arena card dropped anywhere else glides back to its spot
   }
 }
 
@@ -429,34 +428,95 @@ function playCard(card) {
   }
 }
 
-// Move a card out of the arena and back into the hand
-function returnToHand(card) {
-  const index = board.indexOf(card);
-  board.splice(index, 1);
+// Pulsing glow drawn behind the card
+function drawCardGlow(card, rgb) {
+  const seconds = millis() / 1000;
+  const pulse = (sin(seconds * TWO_PI * 0.5) + 1) / 2;
 
-  // Keep the turn order pointing at the same card after the others shift left
-  if (index < activeIndex) activeIndex--;
-  if (activeIndex >= board.length) {
-    activeIndex = 0;
-  }
-
-  hand.push(card); // targets (size and spot) are set by layoutHand()
-  layoutHand();
-  layoutBoard();
-}
-
-// Pulsing gold outline around the card whose turn it is
-function drawActiveGlow(card) {
-  const pulse = (sin(frameCount * 0.1) + 1) / 2; // 0..1
   push();
   rectMode(CENTER);
-  noFill();
-  drawingContext.shadowBlur = 18 + 10 * pulse;
-  drawingContext.shadowColor = "rgba(255, 210, 110, 0.9)";
-  stroke(255, 215, 120, 180 + 75 * pulse);
-  strokeWeight(4);
-  rect(card.x, card.y, card.w + 8, card.h + 8, 14);
+  noStroke();
+
+  drawingContext.shadowBlur = 26;
+  drawingContext.shadowColor = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${0.6 + 0.4 * pulse})`;
+  fill(rgb[0], rgb[1], rgb[2], 150 + 90* pulse);
+  rect(card.x, card.y, card.w + 10, card.h + 10, 16);
   pop();
+}
+
+// Tracks the arena card under the mouse that can attack and enlarges it slightly
+function updateArenaHover() {
+  hoveredArenaCard = null;
+
+  if (aimingCard) {
+    hoveredArenaCard = aimingCard;
+  } else {
+    for (const card of board) {
+      if (canAim(card) && card.contains(mouseX, mouseY)) {
+        hoveredArenaCard = card;
+      }
+    }
+  }
+  for (const card of board) {
+    const grow = card === hoveredArenaCard ? 1.05 : 1;
+    card.targetW = BOARD_W * grow;
+    card.targetH = BOARD_H * grow;
+  }
+}
+
+// Point along the arrow's curve, t = 0 at the card, t = 1 at the mouse
+function arrowPoint(start, end, t, bend) {
+  return {
+    x: lerp(start.x, end.x, t) + sin(t * PI) * bend,
+    y: lerp(start.y, end.y, t),
+  };
+}
+
+// Firefly-chain arrow from the aiming card to the mouse
+function drawAttackArrow(card) {
+  if (card.contains(mouseX, mouseY)) {
+    return;
+  }
+
+  const start = {x: card.x, y: card.y};
+  const end = {x: mouseX, y: mouseY};
+  const length = dist(start.x, start.y, end.x, end.y);
+  const bend = length * 0.12;
+  const count = floor(length / 22);
+  const c = [255, 220, 120];
+
+  push();
+  noStroke();
+  blendMode(ADD);
+
+  const flow = (millis() / 450) % 1;
+
+  for (let i = 0; i < count; i++) {
+    const t = (i + flow) / count;
+    const p = arrowPoint(start, end, t, bend);
+    if (dist(p.x, p.y, end.x, end.y) < 34) {
+      continue;
+    }
+    fill(255, 150, 40, 70);
+    circle(p.x, p.y, 16);
+    fill(c);
+    circle(p.x, p.y, 10);
+  }
+  blendMode(BLEND);
+  pop();
+
+  const before = arrowPoint(start, end, 0.95, bend);
+  const angle = atan2(end.y - before.y, end.x - before.x);
+
+  push();
+  translate(end.x, end.y);
+  rotate(angle);
+  stroke(INK);
+  strokeWeight(2.5);
+  fill(c);
+  triangle(4, 0, -24, -15, -24, 15);
+  pop();
+
 }
 
 // ---------- Layout ----------
@@ -530,44 +590,20 @@ function drawArenaZone() {
   pop();
 }
 
-// The strip along the bottom where your hand is
-function isOverHand(mx, my) {
-  return my >= HAND_Y - 65;
-}
-
-// Dashed outline over the hand while an arena card is being dragged
-function drawHandDropZone() {
-  push();
-  rectMode(CORNER);
-  noFill();
-  stroke(200, 170, 90);
-  strokeWeight(2);
-  drawingContext.setLineDash([8, 6]);
-  rect(20, HAND_Y - 62, width - 40, 122, 14);
-  drawingContext.setLineDash([]);
-
-  noStroke();
-  fill(200, 170, 90);
-  // In the gap between your hand and the deck, so the hand cards don't cover it
-  textAlign(CENTER, CENTER);
-  textSize(13);
-  text("Drop here\nto return\nto hand", width - 160, HAND_Y - 22);
-  pop();
-}
-
 function isOverArena(mx, my) {
   return mx >= arena.x - arena.w / 2 && mx <= arena.x + arena.w / 2 &&
          my >= arena.y - arena.h / 2 && my <= arena.y + arena.h / 2;
 }
 
-// A small panel beside a card showing its class
+// A small panel beside a card showing its info
 function drawInfoPanel(card) {
   const w = 150;
   const h = 70;
-  let x = card.x + card.w / 2 + 15;           // right of the card...
-  // ...or left of it if it would cover the Attack/Heal buttons
+  let x = card.x + card.w / 2 + 15;
+
+  // Right of the card, or left of it if it would cover the Heal button
   if (x + w > arena.x + arena.w / 2) {
-    x = card.x - card.w / 2 - 15 - w;         // ...or left of it if there's no room
+    x = card.x - card.w / 2 - 15 - w;
   }
   const y = card.y - h / 2;
 
@@ -599,10 +635,8 @@ function getCursorMode() {
     if (card.contains(mouseX, mouseY)) return "hover";
   }
 
-  if (canMoveCards()) {
-    for (const card of board) {
-      if (card.contains(mouseX, mouseY)) return "hover";
-    }
+  if (hoveredArenaCard) {
+    return "hover";
   }
 
   for (const b of buttons) {
