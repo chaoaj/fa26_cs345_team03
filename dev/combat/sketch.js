@@ -5,6 +5,9 @@ const HEAL_AMOUNT = 12;
 const ENEMY_HEAL_THRESHOLD = 0.3;
 const MAX_BOARD = 4; // most cards you can have in the arena at once
 
+const START_HAND_SIZE = 7;
+const DEAL_DELAY = 15;
+
 // Canvas size: same on every screen of the game
 const CANVAS_W = 1000, CANVAS_H = 650;
 
@@ -18,6 +21,8 @@ const ENEMY_Y = 145;
 const ARENA_Y = 365;
 const SANITY_BAR_Y = 510; // your big shared sanity bar, under the arena
 const HAND_Y = 590;
+
+const MAX_ENERGY = 10;
 
 let enemy;
 let enemyAI;
@@ -34,6 +39,12 @@ let deckPile;             // right side: cards will be drawn from here (later)
 let discardPile;          // left side: used cards will go here (later)
 let playerSanity;         // your one shared sanity bar
 
+let deck = [];
+let discard = [];
+
+let cardsToDeal = 0;
+let dealTimer = 0;
+
 let selectedCard = null;  // the hand card the mouse is over (shown enlarged)
 let draggedCard = null;   // the card being dragged
 let draggedFrom = null;   // where the dragged card came from
@@ -45,6 +56,9 @@ let dragStartY = 0;
 let hoveredArenaCard = null;                // arena card under the mouse that can attack
 let aimingCard = null;                      // arena card currently pulling the attack arrow
 
+let energy = 0;
+let energyLayer;
+
 function setup() {
   createCanvas(CANVAS_W, CANVAS_H);
   noCursor();
@@ -53,10 +67,13 @@ function setup() {
 
   arena = { x: width / 2, y: ARENA_Y, w: 700, h: 246 };
 
+  energyLayer = createGraphics(90, 410);
+  energyLayer.pixelDensity(1);
+
   // Heal button, to the right of the arena
   const bx = arena.x + arena.w / 2 + 12;
   buttons = [
-    new Button("Heal", null, "heal", bx, ARENA_Y  - 20),
+    new Button("Heal", null, "heal", bx, 40),
   ];
   for (const b of buttons) {
     b.w = 90;
@@ -83,23 +100,18 @@ function startBattle() {
   board = [];
   hand = [];
   effects = [];
+  energy = 0;
 
-  const names = ["Brawler", "Trickster", "Guardian", "Mystic", "Ranger", "Herbalist", "Bard"];
-  for (const name of names) {
-    const card = new Card(name, 0, 0, color(172, 108, 60), HAND_W, HAND_H); // warm wood
-    card.side = "player";
-    card.showBar = false;
-    hand.push(card);
-  }
 
   // The piles sit in the bottom corners, on either side of the hand
   deckPile = new Pile("Deck", width - 55, HAND_Y, true);
   discardPile = new Pile("Discard", 55, HAND_Y, false);
   deckPile.showCount = false;    // no number on the piles
   discardPile.showCount = false;
-  // Placeholder counts so you can see the piles. Draw/discard logic will set these later.
-  deckPile.count = 20;
-  discardPile.count = 5;
+  discard = [];
+  buildDeck();
+  cardsToDeal = START_HAND_SIZE;
+  dealTimer = 0;
 
   selectedCard = null;
   draggedCard = null;
@@ -107,12 +119,67 @@ function startBattle() {
   gameOverMessage = null;
   currentTurn = null;
 
-  layoutHand();
-  // Start the hand cards in place instead of gliding in from the corner
-  for (const card of hand) {
-    card.x = card.targetX;
-    card.y = card.targetY;
+}
+
+function makeCard (name, type) {
+  const c = type === "energy" ? color(60, 120, 150) : color(172, 108, 60);
+  const card = new Card(name, 0, 0, c, HAND_W, HAND_H);
+  card.side = "player";
+  card.type = type;
+  card.showBar = false;
+  
+  return card;
+}
+
+function buildDeck() {
+  deck = [];
+  const names = ["Brawler", "Trickster", "Guardian", "Mystic", "Ranger", "Herbalist", 
+    "Bard", "Brawler", "Trickster", "Guardian"];
+
+    for (const name of names) {
+      deck.push(makeCard(name, "combat"));
+    }
+    for (let i = 0; i < 10; i++) {
+      deck.push(makeCard("Energy", "energy"));
+    }
+    shuffle(deck, true);
+}
+
+function drawCard() {
+  if (deck.length === 0) {
+    if (discard.length === 0) {
+      return;
+    }
+    deck = discard;
+    discard = [];
+    shuffle(deck, true);
   }
+
+  const card = deck.pop();
+  card.x = deckPile.x;
+  card.y = deckPile.y;
+  hand.push(card);
+  layoutHand();
+}
+
+function dealCards() {
+  if (cardsToDeal <= 0) {
+    return;
+  }
+  dealTimer--;
+  if (dealTimer <= 0) {
+    drawCard();
+    cardsToDeal--;
+    dealTimer = DEAL_DELAY;
+  }
+  
+  
+}
+
+function discardCard(card) {
+  board.splice(board.indexOf(card), 1);
+  discard.push(card);
+  layoutBoard();
 }
 
 function draw() {
@@ -132,6 +199,10 @@ function draw() {
   enemy.draw();
 
   drawArenaZone();
+  drawEnergyMeter();
+  dealCards();
+  deckPile.count = deck.length;
+  discardPile.count = discard.length;
   deckPile.draw();
   discardPile.draw();
 
@@ -217,26 +288,63 @@ function canUseButtons() {
 
 // Cards can be played except during the enemy's turn or an animation
 function canMoveCards() {
-  return currentTurn !== "enemy" && !busy && !gameOverMessage;
+  return currentTurn !== "enemy" && !busy && !gameOverMessage && cardsToDeal === 0;
 }
 
 // Playing a card also needs a free spot in the arena
-function canPlayCard() {
-  return canMoveCards() && board.length < MAX_BOARD;
+function canPlayCard(card) {
+  if (!card || !canMoveCards()) {
+    return false;
+  }
+
+  if (card.type === "energy") {
+    return energy < MAX_ENERGY;
+  }
+  return board.length < MAX_BOARD;
 }
 
 // Any arena card can attack on player's turn while nothing is animating
 function canAim(card) {
-  return currentTurn === "player" && board.includes(card) && !busy && !gameOverMessage;
+  return currentTurn === "player" && board.includes(card) && energy > 0 && !busy && !gameOverMessage;
 }
 
 // Fires an orb at the target, damage lands on the impact, then the turn passes
 function performAttack(actor) {
   const target = actor.side === "player" ? enemy : playerSanity;
 
+  if (actor.side === "player") {
+    energy--;
+
+    const target = getNextEnergyTarget();
+    effects.push(new CrystalShatter(target.x, target.y));
+  }
   busy = true;
+
   effects.push(new AttackProjectile(actor, target, () => {
+    const damage = Math.min(ATTACK_DAMAGE, target.sanity);
+
     target.takeDamage(ATTACK_DAMAGE);
+
+    effects.push(new FloatingText(
+      "-" + damage,
+      target.x,
+      target.y,
+      [255, 70, 70],
+      30
+    ));
+    
+    if (actor.side === "player") {
+      effects.push(new CardShatter(
+        actor,
+        discardPile.x,
+        discardPile.y,
+        [205, 70, 50]
+      ));
+
+      discardCard(actor);
+      drawCard();
+    }
+
     endTurn();
   }));
 }
@@ -335,6 +443,16 @@ function mousePressed() {
 
   // Pressing an arena card starts aiming
   for (const card of board) {
+    if (currentTurn === "player" && !busy && !gameOverMessage && energy === 0 && card.contains(mouseX, mouseY)) {
+      effects.push(new FloatingText(
+        "You need energy to attack!",
+        card.x,
+        card.y
+      ));
+
+      return;
+    }
+
     if (canAim(card) && card.contains(mouseX, mouseY)) {
       aimingCard = card;
       return;
@@ -373,7 +491,7 @@ function mouseReleased() {
   }
   
   if (draggedCard) {
-    if (draggedFrom === "hand" && movedEnough() && canPlayCard() && isOverArena(mouseX, mouseY)) {
+    if (draggedFrom === "hand" && movedEnough() && canPlayCard(draggedCard) && isOverArena(mouseX, mouseY)) {
       playCard(draggedCard);
       selectedCard = null;
     }
@@ -431,17 +549,32 @@ function isOverHandCard(card) {
 
 // Move a card out of the hand and into the arena
 function playCard(card) {
-  hand.splice(hand.indexOf(card), 1);
-  board.push(card);
+  const handIndex = hand.indexOf(card);
 
-  card.targetW = BOARD_W;
-  card.targetH = BOARD_H;
-  layoutBoard(); // no buttons or sanity bar on your cards: you share them
+  // Only play a card that is in your hand and allowed.
+  if (handIndex === -1 || !canPlayCard(card)) return;
 
-  // The battle starts when your first card is played
+  hand.splice(handIndex, 1);
+
+  if (selectedCard === card) {
+    selectedCard = null;
+  }
+
+  // Either card type can start the battle.
   if (currentTurn === null) {
     currentTurn = "player";
   }
+
+  if (card.type === "energy") {
+    playEnergyCard(card);
+  } else {
+    board.push(card);
+    card.targetW = BOARD_W;
+    card.targetH = BOARD_H;
+    layoutBoard();
+  }
+
+  layoutHand();
 }
 
 // Pulsing glow drawn behind the card
@@ -490,7 +623,7 @@ function arrowPoint(start, end, t, bend) {
 
 // Firefly-chain arrow from the aiming card to the mouse
 function drawAttackArrow(card) {
-  if (card.contains(mouseX, mouseY)) {
+  if (card.contains(mouseX, mouseY) || mouseY >= card.y + card.h / 2) {
     return;
   }
 
@@ -662,4 +795,86 @@ function getCursorMode() {
   if (gameOverMessage && restartButton.contains(mouseX, mouseY)) return "hover";
 
   return "normal";
+}
+
+function drawEnergyMeter() {
+  const x = arena.x + arena.w / 2 + 12;
+  const y = 90;
+  const g = energyLayer;
+
+  g.clear();
+
+  g.noStroke();
+  g.fill(30, 20, 46, 220);
+  g.rect(0, 0, g.width, g.height, 12);
+
+  g.fill(CREAM);
+  g.textFont("Georgia");
+  g.textAlign(CENTER, CENTER);
+  g.textSize(14);
+  g.text("Energy", g.width / 2, 18);
+
+  drawCrystalMeter(
+    g,
+    39, 40,
+    12, 330,
+    energy,
+    MAX_ENERGY,
+    {
+      gap: 5,
+      glow: 0.45,
+      animate: true,
+      time: millis() / 1000
+    }
+  );
+
+  g.fill(CREAM);
+  g.text(`${energy} / ${MAX_ENERGY}`, g.width / 2, 390);
+
+  image(g,x, y);
+}
+
+function getNextEnergyTarget() {
+  const panelX = arena.x + arena.w / 2 + 12;
+  const panelY = 90;
+
+  const columnX = 39;
+  const columnY = 40;
+  const crystalWidth = 12;
+  const columnHeight = 330;
+  const gap = 5;
+
+  const crystalHeight =
+    (columnHeight - gap * (MAX_ENERGY - 1)) / MAX_ENERGY;
+
+  // Fill from the bottom upward.
+  const slot = MAX_ENERGY - 1 - energy;
+
+  return {
+    x: panelX + columnX + crystalWidth / 2,
+    y: panelY + columnY + slot * (crystalHeight + gap) + crystalHeight / 2
+  };
+}
+
+function playEnergyCard(card) {
+  const target = getNextEnergyTarget();
+
+  busy = true;
+
+  effects.push(
+    new CardShatter(
+      card,
+      target.x,
+      target.y,
+      [100, 220, 255],
+      () => {
+        energy = Math.min(energy + 1, MAX_ENERGY);
+
+        discard.push(card);
+        drawCard();
+
+        busy = false;
+      }
+    )
+  );
 }
