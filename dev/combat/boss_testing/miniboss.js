@@ -1,9 +1,39 @@
 const MINIBOSS_TYPES = Object.freeze([
-  Object.freeze({ id: "cardThief", name: "Card Thief", ability: "stealCard", selectionChance: 0.2 }),
-  Object.freeze({ id: "attackNullifier", name: "Attack Nullifier", ability: "nullifyAttack", selectionChance: 0.2 }),
-  Object.freeze({ id: "minionCaller", name: "Minion Caller", ability: "summonMinion", selectionChance: 0.2 }),
-  Object.freeze({ id: "criticalStriker", name: "Critical Striker", ability: "criticalAttack", selectionChance: 0.2 }),
-  Object.freeze({ id: "boostNullifier", name: "Boost Nullifier", ability: "nullifyStatBoost", selectionChance: 0.2 })
+  Object.freeze({
+    id: "cardThief",
+    name: "Card Thief",
+    ability: "stealCard",
+    description: "At low sanity, steals a card from your hand.",
+    selectionChance: 0.15
+  }),
+  Object.freeze({
+    id: "attackNullifier",
+    name: "Attack Nullifier",
+    ability: "nullifyAttack",
+    description: "At low sanity, nullifies your next attack.",
+    selectionChance: 0.15
+  }),
+  Object.freeze({
+    id: "minionCaller",
+    name: "Minion Caller",
+    ability: "summonMinion",
+    description: "At low sanity, summons a minion that attacks with it.",
+    selectionChance: 0.15
+  }),
+  Object.freeze({
+    id: "criticalStriker",
+    name: "Critical Striker",
+    ability: "criticalAttack",
+    description: "Has a 20% chance to deal double damage.",
+    selectionChance: 0.15
+  }),
+  Object.freeze({
+    id: "boostNullifier",
+    name: "Boost Nullifier",
+    ability: "nullifyStatBoost",
+    description: "At low sanity, nullifies your next Heal.",
+    selectionChance: 0.15
+  })
 ]);
 
 class MinibossAI {
@@ -33,11 +63,13 @@ class MinibossAI {
   }
 
   chooseMiniboss() {
-    const index = Math.min(
-      MINIBOSS_TYPES.length - 1,
-      Math.floor(this.random() * MINIBOSS_TYPES.length)
-    );
-    return MINIBOSS_TYPES[index];
+    const roll = this.random();
+    let cumulativeChance = 0;
+    for (const miniboss of MINIBOSS_TYPES) {
+      cumulativeChance += miniboss.selectionChance;
+      if (roll < cumulativeChance) return miniboss;
+    }
+    return null;
   }
 
   shouldUseAbility(currentSanity, maxSanity, threshold = this.sanityThreshold) {

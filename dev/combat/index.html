@@ -2,24 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Combat Prototype</title>
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Combat Testing Menu</title>
   <style>
-    body { margin: 0; background: #150d1f; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      background: #150d1f;
+      color: #f5e8d0;
+      font-family: Georgia, serif;
+    }
+    main {
+      width: min(100%, 560px);
+      padding: 36px;
+      border: 1px solid #6c527d;
+      border-radius: 16px;
+      background: #21152e;
+      box-shadow: 0 18px 60px #08040d99;
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 6vw, 42px);
+    }
+    p {
+      margin: 0 0 28px;
+      color: #c9b8d2;
+      line-height: 1.5;
+    }
+    nav {
+      display: grid;
+      gap: 14px;
+    }
+    a {
+      display: block;
+      padding: 16px 20px;
+      border: 1px solid #9573b4;
+      border-radius: 10px;
+      background: #39254b;
+      color: #fff3dc;
+      font-size: 19px;
+      font-weight: bold;
+      text-decoration: none;
+      transition: background-color 120ms ease, transform 120ms ease;
+    }
+    a:hover {
+      transform: translateY(-2px);
+      background: #51336a;
+    }
+    a:focus-visible {
+      outline: 3px solid #f1c96e;
+      outline-offset: 3px;
+    }
+    @media (max-width: 480px) {
+      main {
+        padding: 26px 20px;
+      }
+    }
   </style>
 </head>
 <body>
-  <!-- Load order matters: classes first, sketch last -->
-  <script src="background.js"></script>
-  <script src="card.js"></script>
-  <script src="playersanity.js"></script>
-  <script src="button.js"></script>
-  <script src="effects.js"></script>
-  <script src="pile.js"></script>
-  <script src="cursor.js"></script>
-  <script src="enemyAI.js"></script>
-  <script src="miniboss.js"></script>
-  <script src="crystal.js"></script>
-  <script src="sketch.js"></script>
+  <main>
+    <h1>Combat Testing</h1>
+    <p>Choose which combat experience to open.</p>
+    <nav aria-label="Testing options">
+      <a href="boss_testing/index.html">General Boss Testing</a>
+      <a href="combat_testing.html">Combat Testing</a>
+    </nav>
+  </main>
 </body>
 </html>

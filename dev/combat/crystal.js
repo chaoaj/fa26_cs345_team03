@@ -1,10 +1,13 @@
 (function (root) {
   'use strict';
+  // Shared drawing helpers for the faceted crystal used as the combat energy meter.
+  // Geometry is normalized so the same design can be drawn at any size.
   const P = { tip:[.50,0], lt:[.045,.088], rt:[.96,.073],
     crown:[.575,.106], lip:[.335,.167], shoulder:[.985,.188],
     mid:[.825,.565], heel:[.265,.765], lb:[0,.813],
     rb:[.97,.815], bottom:[.54,1] };
   const OUTLINE=['tip','rt','shoulder','rb','bottom','lb','lt'];
+  // Each face names its polygon vertices, gradient endpoints, and gradient colors.
   const FACES = [
     {v:['tip','lt','crown'], d:[0,0,1,.2], c:['#ffe9bf','#8f8bff','#6423f5']},
     {v:['tip','crown','rt'], d:[.4,0,1,.14], c:['#4920ca','#7215ef','#f379ff']},
@@ -26,6 +29,11 @@
     const g=c.createRadialGradient(0,0,0,0,0,1); g.addColorStop(0,color); g.addColorStop(1,'rgba(255,255,255,0)');
     c.fillStyle=g; c.fillRect(-1,-1,2,2); c.restore();
   }
+  /**
+   * Draw one filled or depleted crystal on a p5 P2D graphics surface.
+   * x/y and width/height are in the surface's pixels. Options support
+   * `empty`, `glow` (0-1), and `animate` with `time` and `phase`.
+   */
   function drawCrystal(g,x,y,w,h,options={}) {
     if (![x,y,w,h].every(Number.isFinite) || w<=0 || h<=0) throw new RangeError('Crystal bounds must be finite; width and height must be positive.');
     const c=g && g.drawingContext;
@@ -79,6 +87,13 @@
       } c.restore();
     } finally { c.restore(); }
   }
+  /**
+   * Draw a vertical energy meter made from `total` crystals.
+   * `count` is floored and clamped to the available slots; filled crystals
+   * appear at the bottom. Returns the number of filled crystals drawn.
+   * `options.gap` sets the pixel gap between crystals; other options are
+   * passed to drawCrystal.
+   */
   function drawCrystalMeter(g,x,y,w,h,count,total=10,options={}) {
     if (!Number.isInteger(total)||total<1||total>1000) throw new RangeError('total must be an integer from 1 to 1000.');
     if(!Number.isFinite(count)) throw new RangeError('count must be finite.');

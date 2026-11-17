@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boss Combat Testing</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 12px;
+      background: #150d1f;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      min-height: 100vh;
+    }
+    .test-navigation {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+    .test-navigation a {
+      padding: 8px 14px;
+      border: 1px solid #9573b4;
+      border-radius: 8px;
+      background: #39254b;
+      color: #f5e8d0;
+      font-family: Georgia, serif;
+      text-decoration: none;
+    }
+    .test-navigation a:focus-visible {
+      outline: 3px solid #f1c96e;
+      outline-offset: 2px;
+    }
+    canvas {
+      max-width: 100%;
+      height: auto !important;
+    }
+  </style>
+</head>
+<body>
+  <nav class="test-navigation" aria-label="Testing navigation">
+    <a href="../index.html">Testing Menu</a>
+    <a href="../combat_testing.html">Combat Testing</a>
+  </nav>
+  <script src="background.js"></script>
+  <script src="card.js"></script>
+  <script src="playersanity.js"></script>
+  <script src="button.js"></script>
+  <script src="effects.js"></script>
+  <script src="pile.js"></script>
+  <script src="cursor.js"></script>
+  <script src="enemyAI.js"></script>
+  <script src="miniboss.js"></script>
+  <script src="../../classes/boss/corruptedBear/corruptedBear.js"></script>
+  <script src="../../classes/boss/corruptedBear/corruptedBearAbilities.js"></script>
+  <script src="crystal.js"></script>
+  <script src="sketch.js"></script>
+</body>
+</html>
