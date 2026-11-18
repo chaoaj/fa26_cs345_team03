@@ -24,8 +24,8 @@
  
 ## 1.2 "Ready for Review" Checklist
  
-- [] All of our tasks are marked done in GitHub Projects
-- [] All of our Sprint Backlog Items meet their acceptance criteria
+- [ ] All of our tasks are marked done in GitHub Projects
+- [ ] All of our Sprint Backlog Items meet their acceptance criteria
 - [x] All of our code is committed and pushed to GitHub
 - [X] The production URL loads the same version we will demonstrate (we refreshed it after the last push)
 - [X] The commit ID above matches the commit we are demonstrating
@@ -70,8 +70,8 @@ None known.
  
 ## 2.1 Close Out the Sprint in GitHub Projects
  
-- [] Every task we completed is marked done
-- [] Every completed Sprint Backlog Item is moved to the **Done** (Closed) column, and its issue is closed
+- [ ] Every task we completed is marked done
+- [ ] Every completed Sprint Backlog Item is moved to the **Done** (Closed) column, and its issue is closed
 - [ ] Every unfinished item is left open with a comment explaining what is left
 - [ ] The sprint is finished in GitHub Projects
 
