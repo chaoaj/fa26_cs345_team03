@@ -1,20 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Sketch</title>
-
-    <link rel="stylesheet" type="text/css" href="style.css">
-
-    <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
-  </head>
-
-  <body>
-    <a href="dev/index.html">Play Whimsy & Woe</a>
-    <br>
-    <a href="dev/combat/index.html">Combat prototype</a>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Whimsy &amp; Woe - Development Menu</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      background: #150d1f;
+      color: #f5e8d0;
+      font-family: Georgia, serif;
+    }
+    main {
+      width: min(100%, 900px);
+      padding: 36px;
+      border: 1px solid #6c527d;
+      border-radius: 16px;
+      background: #21152e;
+      box-shadow: 0 18px 60px #08040d99;
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 6vw, 44px);
+    }
+    .intro {
+      margin: 0 0 28px;
+      color: #c9b8d2;
+      line-height: 1.5;
+    }
+    nav {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+      gap: 16px;
+    }
+    nav a {
+      display: block;
+      min-height: 150px;
+      padding: 22px;
+      border: 1px solid #9573b4;
+      border-radius: 10px;
+      background: #39254b;
+      color: #fff3dc;
+      text-align: left;
+      text-decoration: none;
+      transition: background-color 120ms ease, transform 120ms ease;
+    }
+    nav a:hover {
+      transform: translateY(-2px);
+      background: #51336a;
+    }
+    nav a:focus-visible,
+    .all-tests:focus-visible {
+      outline: 3px solid #f1c96e;
+      outline-offset: 3px;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 21px;
+    }
+    nav p {
+      margin: 0;
+      color: #d3c3dc;
+      line-height: 1.5;
+    }
+    .all-tests {
+      display: inline-block;
+      margin-top: 24px;
+      color: #e9c9ff;
+    }
+    @media (max-width: 480px) {
+      main {
+        padding: 26px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Whimsy &amp; Woe</h1>
+    <p class="intro">Development builds and testing tools. Choose what you want to open.</p>
+    <nav aria-label="Development projects">
+      <a href="dev/index.html">
+        <h2>Main Game</h2>
+        <p>Play the current Whimsy &amp; Woe development build.</p>
+      </a>
+      <a href="dev/combat/combat_testing.html">
+        <h2>Combat Testing</h2>
+        <p>Try the standalone combat prototype.</p>
+      </a>
+      <a href="dev/combat/boss_testing/index.html">
+        <h2>Boss Testing</h2>
+        <p>Choose and test the minibosses or Corrupted Bear.</p>
+      </a>
+    </nav>
+    <a class="all-tests" href="dev/combat/index.html">Open the combined combat and boss testing menu</a>
+  </main>
+</body>
 </html>
