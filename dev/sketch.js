@@ -6,6 +6,7 @@
  * - Startup screen
  * - Profile selection
  * - Main menu
+ * - Loading screen
  * - Class selection
  * - Deck builder
  * - Custom deck naming window
@@ -86,6 +87,9 @@ function setup() {
   // Initialize main menu particles.
   mmSetup();
 
+  // Initialize loading screen.
+  loadingSetup();
+
   // Deck builder setup runs when entering that screen.
 }
 
@@ -101,6 +105,10 @@ function draw() {
 
     case "profileSelection":
       drawProfileSelection();
+      break;
+
+    case "loading":
+      loadingDraw();
       break;
 
     case "mainMenu":
